@@ -25,7 +25,7 @@ public class VcDbContext : TestContextBase
             cfg.Property(y => y.Id).UseIdentityColumn();
             
             cfg.Property(y => y.Enum)
-                .HasColumnType(_"text"
+                .HasColumnType("text")
                 .HasConversion<string>();
 
             cfg.Property(y => y.LocalDate).HasColumnType("date").HasConversion(new LocalDateValueConverter());
