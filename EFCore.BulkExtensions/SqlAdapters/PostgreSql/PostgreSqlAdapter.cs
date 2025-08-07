@@ -95,7 +95,7 @@ public class PostgreSqlAdapter
                     // string is 'text' which works fine
                     if (columnType.StartsWith("character") && !columnType.EndsWith("[]"))   // when MaxLength is defined: 'character(1)' or 'character varying'
                         columnType = "character";             // 'character' is like 'string'
-                    else if (columnType.StartsWith("varchar"))
+                    else if (columnType.StartsWith("varchar") && !columnType.EndsWith("[]"))
                         columnType = "varchar";
                     else if (columnType.StartsWith("numeric") && columnType != "numeric[]")
                         columnType = "numeric";
