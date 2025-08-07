@@ -41,7 +41,6 @@ public static class BatchUtil
         var (sql, tableAlias, _, topStatement, leadingComments, innerParameters) = GetBatchSql(query, context, isUpdate: false);
 
         innerParameters = ReloadSqlParameters(context, innerParameters.ToList()); // PostgreSQL parameters
-        var databaseType = SqlAdaptersMapping.GetDatabaseType(context);
 
         // PostgreSQL-only implementation
         string resultQuery = $"{leadingComments}DELETE {topStatement}{tableAlias}{sql}";
@@ -145,7 +144,6 @@ public static class BatchUtil
             resultQuery = resultQuery.Split("ORDER", StringSplitOptions.None)[0];
         }
 
-        var databaseType = SqlAdaptersMapping.GetDatabaseType(context);
         // PostgreSQL-only implementation
         resultQuery = SqlAdaptersMapping.GetQueryBuilder(context).RestructureForBatch(resultQuery);
 
@@ -199,8 +197,7 @@ public static class BatchUtil
         string tableAliasSufixAs = string.Empty;
         string topStatement;
 
-        var databaseType = SqlAdaptersMapping.GetDatabaseType(context);
-        (tableAlias, topStatement) = sqlQueryBuilder.GetBatchSqlReformatTableAliasAndTopStatement(sqlQuery, databaseType);
+        (tableAlias, topStatement) = sqlQueryBuilder.GetBatchSqlReformatTableAliasAndTopStatement(sqlQuery);
 
         int indexFrom = sqlQuery.IndexOf(Environment.NewLine, StringComparison.Ordinal);
         string sql = sqlQuery[indexFrom..];

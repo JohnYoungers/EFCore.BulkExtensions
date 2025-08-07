@@ -38,7 +38,6 @@ public class BatchUpdateCreateBodyData
         LambdaExpression updateExpression)
     {
         BaseSql = baseSql;
-        DatabaseType = SqlAdaptersMapping.GetDatabaseType(dbContext);
         DbContext = dbContext;
         Query = query;
         RootInstanceParameterName = updateExpression.Parameters?.FirstOrDefault()?.Name;
@@ -64,7 +63,6 @@ public class BatchUpdateCreateBodyData
 
 #pragma warning disable CS1591 // No need for XML comments here.
     public string BaseSql { get; }
-    public SqlType DatabaseType { get; }
     public DbContext DbContext { get; }
     public IQueryable Query { get; }
     public string? RootInstanceParameterName { get; }

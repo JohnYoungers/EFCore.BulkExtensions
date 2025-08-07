@@ -67,16 +67,16 @@ public class SqlDefaultDialect
     }
 
     /// <inheritdoc/>
-    public (string, string) GetBatchSqlReformatTableAliasAndTopStatement(string sqlQuery, SqlType databaseType)
+    public (string, string) GetBatchSqlReformatTableAliasAndTopStatement(string sqlQuery)
     {
-        var isPostgreSql = databaseType == SqlType.PostgreSql;
-        var escapeSymbolEnd = isPostgreSql ? "." : "]";
-        var escapeSymbolStart = isPostgreSql ? " " : "["; // SqlServer : PostrgeSql;
-        // Note: PostgreSQL is the only supported database type
-        var tableAliasEnd = sqlQuery[SelectStatementLength..sqlQuery.IndexOf(escapeSymbolEnd, StringComparison.Ordinal)]; // " TOP(10) [table_alias" / " [table_alias" : " table_alias"
+        // PostgreSQL is the only supported database type
+        var escapeSymbolEnd = ".";
+        var escapeSymbolStart = " "; // PostgreSQL format
+        
+        var tableAliasEnd = sqlQuery[SelectStatementLength..sqlQuery.IndexOf(escapeSymbolEnd, StringComparison.Ordinal)]; // " table_alias"
         var tableAliasStartIndex = tableAliasEnd.IndexOf(escapeSymbolStart, StringComparison.Ordinal);
         var tableAlias = tableAliasEnd[(tableAliasStartIndex + escapeSymbolStart.Length)..]; // "table_alias"
-        var topStatement = tableAliasEnd[..tableAliasStartIndex].TrimStart(); // "TOP(10) " / if TOP not present in query this will be a Substring(0,0) == ""
+        var topStatement = tableAliasEnd[..tableAliasStartIndex].TrimStart(); // if TOP not present in query this will be a Substring(0,0) == ""
         return (tableAlias, topStatement);
     }
 
