@@ -301,7 +301,7 @@ public class SqlQueryBuilderUnitTests
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     public async Task DelegateDecompiler_DecompileAsync_WorksAsync(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);

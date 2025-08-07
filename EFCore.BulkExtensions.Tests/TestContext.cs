@@ -15,7 +15,6 @@ using System.Reflection;
 using System.Text.Json;
 using EFCore.BulkExtensions.SqlAdapters;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.Internal;
-using Oracle.ManagedDataAccess.Client;
 using System.Threading;
 
 // ReSharper disable EntityFramework.ModelValidation.UnlimitedStringLength
@@ -673,7 +672,8 @@ public class Category
 {
     public int CategoryId { get; set; }
     public string Name { get; set; } = null!;
-    public HierarchyId HierarchyDescription { get; set; } = null!;
+    // HierarchyId is SQL Server specific - removed for PostgreSQL-only support
+    // public HierarchyId HierarchyDescription { get; set; } = null!;
 }
 
 // For testing Computed columns Default values

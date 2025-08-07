@@ -72,7 +72,7 @@ public class Issue547
 {
     //[Theory] // throws: System.Data.SqlTypes.SqlNullValueException : Data is Null. This method or property cannot be called on Null values.
                // at: TableInfo method LoadOutputDataAsync line 1128:var entitiesWithOutputIdentity = QueryOutputTable(...
-    //[InlineData(SqlType.SqlServer)]
+    //[InlineData(SqlType.PostgreSql)]
     public async Task Test(SqlType dbServer)
     {
         var options = new ContextUtil(dbServer)

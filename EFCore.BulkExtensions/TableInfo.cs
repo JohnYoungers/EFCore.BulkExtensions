@@ -308,7 +308,7 @@ public class TableInfo
 
         // PostgreSQL-only implementation
         {
-            var strategyName = SqlAdaptersMapping.DbServer(context).ValueGenerationStrategy;
+            var strategyName = SqlAdaptersMapping.ValueGenerationStrategy;
             if (!strategyName.Contains(":Value"))
             {
                 strategyName = strategyName.Replace("Value", ":Value"); //example 'SqlServer:ValueGenerationStrategy'
@@ -320,7 +320,7 @@ public class TableInfo
                 bool hasIdentity = false;
                 if (annotation != null)
                 {
-                    hasIdentity = SqlAdaptersMapping.DbServer(context).PropertyHasIdentity(annotation);
+                    hasIdentity = SqlAdaptersMapping.PropertyHasIdentity(annotation);
                 }
                 if (hasIdentity)
                 {
@@ -818,7 +818,7 @@ public class TableInfo
         {
             sqlQueryCounts.Add(sqlQueryCountBase + $"'{actionCode}'");
 
-            var resultParameter = SqlAdaptersMapping.DbServer(context).QueryBuilder.CreateParameter("@result" + actionCode, null);
+            var resultParameter = SqlAdaptersMapping.GetQueryBuilder(context).CreateParameter("@result" + actionCode, null);
             if (resultParameter is null)
             {
                 throw new ArgumentException("Unable to create an instance of IDbDataParameter");
@@ -1229,7 +1229,7 @@ public class TableInfo
         if (BulkConfig.SetOutputIdentity && (hasIdentity || tableInfo.TimeStampColumnName == null))
         {
             var databaseType = SqlAdaptersMapping.GetDatabaseType(context);
-            string sqlQuery = SqlAdaptersMapping.DbServer(context).QueryBuilder.SelectFromOutputTable(this);
+            string sqlQuery = SqlAdaptersMapping.GetQueryBuilder(context).SelectFromOutputTable(this);
             //var entitiesWithOutputIdentity = await QueryOutputTableAsync<T>(context, sqlQuery).ToListAsync(cancellationToken).ConfigureAwait(false); // TempFIX
             var entitiesWithOutputIdentity = QueryOutputTable(context, type, sqlQuery).Cast<object>().ToList();
             //var entitiesWithOutputIdentity = (typeof(T) == type) ? QueryOutputTable<object>(context, sqlQuery).ToList() : QueryOutputTable(context, type, sqlQuery).Cast<object>().ToList();

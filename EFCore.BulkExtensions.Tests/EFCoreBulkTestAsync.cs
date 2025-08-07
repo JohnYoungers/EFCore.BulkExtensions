@@ -21,8 +21,8 @@ public class EFCoreBulkTestAsync
     //private static readonly Func<TestContext, IEnumerable<Item>> AllItemsQuery = EF.CompileQuery<TestContext, IEnumerable<Item>>(ctx => ctx.Items.AsNoTracking());
 
     [Theory]
-    [InlineData(SqlType.SqlServer, true)]
-    [InlineData(SqlType.Sqlite, true)]
+    [InlineData(SqlType.PostgreSql, true)]
+    [InlineData(SqlType.PostgreSql, true)]
     //[InlineData(DatabaseType.SqlServer, false)] // for speed comparison with Regular EF CUD operations
     public async Task OperationsTestAsync(SqlType sqlType, bool isBulk)
     {
@@ -36,7 +36,7 @@ public class EFCoreBulkTestAsync
 
         await RunReadAsync(sqlType);
 
-        if (sqlType == SqlType.SqlServer)
+        if (sqlType == SqlType.PostgreSql)
         {
             await RunInsertOrUpdateOrDeleteAsync(isBulk, sqlType); // Not supported for Sqlite (has only UPSERT), instead use BulkRead, then split list into sublists and call separately Bulk methods for Insert, Update, Delete.
         }
@@ -44,7 +44,7 @@ public class EFCoreBulkTestAsync
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     //[InlineData(DbServer.Sqlite)] // has to be run separately as single test, otherwise throws (SQLite Error 1: 'table "#MyTempTable1" already exists'.)
     public async Task SideEffectsTestAsync(SqlType sqlType)
     {
@@ -80,9 +80,9 @@ public class EFCoreBulkTestAsync
 
             createTableSql = sqlType switch
             {
-                SqlType.Sqlite => $"CREATE TEMPORARY {createTableSql}",
-                SqlType.SqlServer => $"CREATE {createTableSql}",
-                SqlType.Oracle => $"CREATE GLOBAL TEMPORARY {createTableSql}",
+                SqlType.PostgreSql => $"CREATE TEMPORARY {createTableSql}",
+                SqlType.PostgreSql => $"CREATE {createTableSql}",
+                SqlType.PostgreSql => $"CREATE GLOBAL TEMPORARY {createTableSql}",
                 _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
             };
             await context.Database.ExecuteSqlRawAsync(createTableSql);
@@ -135,7 +135,7 @@ public class EFCoreBulkTestAsync
 
         if (isBulk)
         {
-            if (sqlType == SqlType.SqlServer)
+            if (sqlType == SqlType.PostgreSql)
             {
                 using var transaction = await context.Database.BeginTransactionAsync();
                 var bulkConfig = new BulkConfig
@@ -163,7 +163,7 @@ public class EFCoreBulkTestAsync
 
                 await transaction.CommitAsync();
             }
-            else if (sqlType == SqlType.Sqlite)
+            else if (sqlType == SqlType.PostgreSql)
             {
                 using var transaction = await context.Database.BeginTransactionAsync();
 
@@ -228,7 +228,7 @@ public class EFCoreBulkTestAsync
                 SqlBulkCopyOptions = SqlBulkCopyOptions.KeepIdentity
             };
             await context.BulkInsertOrUpdateAsync(entities, bulkConfig);
-            if (sqlType == SqlType.SqlServer)
+            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(1, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(EntitiesNumber / 2 - 1, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -339,7 +339,7 @@ public class EFCoreBulkTestAsync
         {
             var bulkConfig = new BulkConfig() { SetOutputIdentity = true, CalculateStats = true };
             await context.BulkUpdateAsync(entities, bulkConfig);
-            if (sqlType == SqlType.SqlServer)
+            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(EntitiesNumber, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -390,7 +390,7 @@ public class EFCoreBulkTestAsync
         {
             var bulkConfig = new BulkConfig() { CalculateStats = true };
             await context.BulkDeleteAsync(entities, bulkConfig);
-            if (sqlType == SqlType.SqlServer)
+            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -413,8 +413,8 @@ public class EFCoreBulkTestAsync
         // RESET AutoIncrement
         string deleteTableSql = sqlType switch
         {
-            SqlType.SqlServer => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
-            SqlType.Sqlite => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
+            SqlType.PostgreSql => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
+            SqlType.PostgreSql => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
             _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
         };
         await context.Database.ExecuteSqlRawAsync(deleteTableSql).ConfigureAwait(false);

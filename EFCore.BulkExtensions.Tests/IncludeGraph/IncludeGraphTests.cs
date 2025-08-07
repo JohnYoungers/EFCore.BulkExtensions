@@ -79,7 +79,7 @@ public class IncludeGraphTests
     };
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     //[InlineData(DbServer.Sqlite)]
     public async Task BulkInsertOrUpdate_EntityWithNestedObjectGraph_SavesGraphToDatabase(SqlType dbServer)
     {

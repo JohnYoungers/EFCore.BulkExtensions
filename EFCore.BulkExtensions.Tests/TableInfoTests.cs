@@ -7,7 +7,7 @@ namespace EFCore.BulkExtensions.Tests;
 public class TableInfoTests
 {
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void CreateTableInfo_For_Hidden_PrimaryKey_Does_Not_Throw(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);

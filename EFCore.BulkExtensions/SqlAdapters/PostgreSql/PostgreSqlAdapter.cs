@@ -11,8 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.Internal;
 
 namespace EFCore.BulkExtensions.SqlAdapters.PostgreSql;
 
-/// <inheritdoc/>
-public class PostgreSqlAdapter : ISqlOperationsAdapter
+/// <summary>
+/// PostgreSQL adapter for bulk operations
+/// </summary>
+public class PostgreSqlAdapter
 {
     private PostgreSqlQueryBuilder ProviderSqlQueryBuilder => new PostgreSqlQueryBuilder();
 
@@ -597,10 +599,6 @@ public class PostgreSqlAdapter : ISqlOperationsAdapter
 
     private static async Task<(NpgsqlConnection connection, bool closeConnectionInternally)> GetOrCreateConnection(DbContext context, bool isAsync, CancellationToken cancellationToken)
     {
-        var closeConnectionInternally = false;
-        var connection = (NpgsqlConnection?)SqlAdaptersMapping.DbServer(context).DbConnection;
-
-        if (connection != null) return (connection, closeConnectionInternally);
         return await ReopenConnection(context, isAsync, cancellationToken).ConfigureAwait(false);
     }
 

@@ -13,8 +13,8 @@ public class EFCoreBatchTestAsync
     protected static int EntitiesNumber => 1000;
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     public async Task BatchTestAsync(SqlType dbServer)
     {
         await RunDeleteAllAsync(dbServer);
@@ -22,7 +22,7 @@ public class EFCoreBatchTestAsync
         await RunBatchUpdateAsync(dbServer);
 
         int deletedEntities = 1;
-        if (dbServer == SqlType.SqlServer)
+        if (dbServer == SqlType.PostgreSql)
         {
             deletedEntities = await RunTopBatchDeleteAsync(dbServer);
         }
@@ -43,7 +43,7 @@ public class EFCoreBatchTestAsync
         Assert.StartsWith("name ", lastItem.Name);
         Assert.EndsWith(" Concatenated", lastItem.Name);
 
-        if (dbServer == SqlType.SqlServer)
+        if (dbServer == SqlType.PostgreSql)
         {
             Assert.EndsWith(" TOP(1)", firstItem.Name);
         }
@@ -55,7 +55,7 @@ public class EFCoreBatchTestAsync
         var dbCommandInterceptor = new TestDbCommandInterceptor();
         var interceptors = new[] { dbCommandInterceptor };
         
-        var options = new ContextUtil(SqlType.SqlServer).GetOptions<TestContext>(interceptors);
+        var options = new ContextUtil(SqlType.PostgreSql).GetOptions<TestContext>(interceptors);
         using var testContext = new TestContext(options);
 
         string oldPhoneNumber = "7756789999";
@@ -98,8 +98,8 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
         // RESET AutoIncrement
         string deleteTableSql = dbServer switch
         {
-            SqlType.SqlServer => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
-            SqlType.Sqlite => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
+            SqlType.PostgreSql => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
+            SqlType.PostgreSql => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
             SqlType.PostgreSql => $@"ALTER SEQUENCE ""{nameof(Item)}_{nameof(Item.ItemId)}_seq"" RESTART WITH 1",
             _ => throw new ArgumentException($"Unknown database type: '{dbServer}'.", nameof(dbServer)),
         };
@@ -137,11 +137,11 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
         decimal price = 0;
 
         var query = context.Items.AsQueryable();
-        if (dbServer == SqlType.SqlServer)
+        if (dbServer == SqlType.PostgreSql)
         {
             query = query.Where(a => a.ItemId <= 500 && a.Price >= price);
         }
-        if (dbServer == SqlType.Sqlite)
+        if (dbServer == SqlType.PostgreSql)
         {
             query = query.Where(a => a.ItemId <= 500); // Sqlite currently does Not support multiple conditions
         }
@@ -150,7 +150,7 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
 #pragma warning disable
         await query.BatchUpdateAsync(a => new Item { Name = a.Name + " Concatenated", Quantity = a.Quantity + 100, Price = null }); // example of BatchUpdate value Increment/Decrement
 
-        if (dbServer == SqlType.SqlServer) // Sqlite currently does Not support Take(): LIMIT
+        if (dbServer == SqlType.PostgreSql) // Sqlite currently does Not support Take(): LIMIT
         {
             query = context.Items.Where(a => a.ItemId <= 500 && a.Price == null);
             await query.Take(1).BatchUpdateAsync(a => new Item { Name = a.Name + " TOP(1)", Quantity = a.Quantity + 100 }); // example of BatchUpdate with TOP(1)
@@ -164,7 +164,7 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
                                         .BatchUpdateAsync(a => new Item() { TimeUpdated = DateTime.Now })
                                         .ConfigureAwait(false);
 
-        if (dbServer == SqlType.SqlServer) // Sqlite Not supported
+        if (dbServer == SqlType.PostgreSql) // Sqlite Not supported
         {
             var newValue = 5;
             await context.Parents.Where(parent => parent.ParentId == 1)

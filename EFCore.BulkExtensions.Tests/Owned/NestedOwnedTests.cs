@@ -10,7 +10,7 @@ namespace EFCore.BulkExtensions.Tests.Owned;
 public class NestedOwnedTests
 {
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     [InlineData(SqlType.PostgreSql)]
     public async Task NestedOwnedTest(SqlType sqlType)
     {

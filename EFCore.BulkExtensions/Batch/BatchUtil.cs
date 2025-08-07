@@ -46,12 +46,12 @@ public static class BatchUtil
         // PostgreSQL-only implementation
         string resultQuery = $"{leadingComments}DELETE {topStatement}{tableAlias}{sql}";
 
-        resultQuery = SqlAdaptersMapping.DbServer(context).QueryBuilder.RestructureForBatch(resultQuery, isDelete: true);
+        resultQuery = SqlAdaptersMapping.GetQueryBuilder(context).RestructureForBatch(resultQuery, isDelete: true);
 
         var npgsqlParameters = new List<DbParameter>();
         foreach (var param in innerParameters)
         {
-            npgsqlParameters.Add(SqlAdaptersMapping.DbServer(context).QueryBuilder.CreateParameter(param.ParameterName, param.Value));
+            npgsqlParameters.Add(SqlAdaptersMapping.GetQueryBuilder(context).CreateParameter(param.ParameterName, param.Value));
         }
         innerParameters = npgsqlParameters;
 
@@ -83,7 +83,7 @@ public static class BatchUtil
 
         sqlParameters = ReloadSqlParameters(context, sqlParameters); // Sqlite requires SqliteParameters
 
-        var (resultQuery, sqlParametersResult) = PrepareSqlUpdate(SqlAdaptersMapping.DbServer(context), type, sqlParameters, sql, sqlSET, tableAlias, tableAliasSufixAs, topStatement, leadingComments, null);
+        var (resultQuery, sqlParametersResult) = PrepareSqlUpdate(context, type, sqlParameters, sql, sqlSET, tableAlias, tableAliasSufixAs, topStatement, leadingComments, null);
         return (resultQuery, sqlParametersResult);
     }
 
@@ -109,14 +109,14 @@ public static class BatchUtil
 
         string sqlSET = $"SET {sqlColumns}";
 
-        var (resultQuery, sqlParametersResult) = PrepareSqlUpdate(SqlAdaptersMapping.DbServer(context), type, sqlParameters, sql, sqlSET, tableAlias, tableAliasSufixAs, topStatement, leadingComments, sqlColumns);
+        var (resultQuery, sqlParametersResult) = PrepareSqlUpdate(context, type, sqlParameters, sql, sqlSET, tableAlias, tableAliasSufixAs, topStatement, leadingComments, sqlColumns);
         return (resultQuery, sqlParametersResult);
     }
 
     /// <summary>
     /// PrepareSqlUpdate
     /// </summary>
-    /// <param name="server"></param>
+    /// <param name="context"></param>
     /// <param name="type"></param>
     /// <param name="sqlParameters"></param>
     /// <param name="sql"></param>
@@ -127,7 +127,7 @@ public static class BatchUtil
     /// <param name="leadingComments"></param>
     /// <param name="sqlColumns"></param>
     /// <returns></returns>
-    public static (string, List<DbParameter>) PrepareSqlUpdate(IDbServer server, Type type, List<DbParameter> sqlParameters, string sql, string sqlSET, string tableAlias, string tableAliasSufixAs, string topStatement, string leadingComments, StringBuilder? sqlColumns)
+    public static (string, List<DbParameter>) PrepareSqlUpdate(DbContext context, Type type, List<DbParameter> sqlParameters, string sql, string sqlSET, string tableAlias, string tableAliasSufixAs, string topStatement, string leadingComments, StringBuilder? sqlColumns)
     {
         var resultQuery = $"{leadingComments}UPDATE {topStatement}{tableAlias}{tableAliasSufixAs} {sqlSET} {sql}";
 
@@ -145,21 +145,21 @@ public static class BatchUtil
             resultQuery = resultQuery.Split("ORDER", StringSplitOptions.None)[0];
         }
 
-        var databaseType = server.Type;
+        var databaseType = SqlAdaptersMapping.GetDatabaseType(context);
         // PostgreSQL-only implementation
-        resultQuery = server.QueryBuilder.RestructureForBatch(resultQuery);
+        resultQuery = SqlAdaptersMapping.GetQueryBuilder(context).RestructureForBatch(resultQuery);
 
         var npgsqlParameters = new List<DbParameter>();
         foreach (var param in sqlParameters)
         {
-            dynamic npgsqlParam = server.QueryBuilder.CreateParameter(param.ParameterName, param.Value);
+            dynamic npgsqlParam = SqlAdaptersMapping.GetQueryBuilder(context).CreateParameter(param.ParameterName, param.Value);
 
             string paramName = npgsqlParam.ParameterName.Replace("@", "");
             var propertyType = type.GetProperties().SingleOrDefault(a => a.Name == paramName)?.PropertyType;
             if (propertyType == typeof(System.Text.Json.JsonElement) || propertyType == typeof(System.Text.Json.JsonElement?)) // for JsonDocument works without fix
             {
-                var dbtypeJsonb = server.QueryBuilder.Dbtype();
-                server.QueryBuilder.SetDbTypeParam(npgsqlParam, dbtypeJsonb);
+                var dbtypeJsonb = SqlAdaptersMapping.GetQueryBuilder(context).Dbtype();
+                SqlAdaptersMapping.GetQueryBuilder(context).SetDbTypeParam(npgsqlParam, dbtypeJsonb);
             }
 
             npgsqlParameters.Add(npgsqlParam);
@@ -289,7 +289,7 @@ public static class BatchUtil
                     {
                         propertyUpdateValue ??= DBNull.Value;
 
-                        param = SqlAdaptersMapping.DbServer(context).QueryBuilder.CreateParameter($"@{columnName}", propertyUpdateValue);
+                        param = SqlAdaptersMapping.GetQueryBuilder(context).CreateParameter($"@{columnName}", propertyUpdateValue);
 
                         if (!isDifferentFromDefault && propertyUpdateValue == DBNull.Value
                             && property?.PropertyType == typeof(byte[])) // needed only when having complex type property to be updated to default 'null'
@@ -565,7 +565,7 @@ public static class BatchUtil
         var sqlParameter = TryCreateRelationalMappingParameter(context, tableInfo, columnName, paramName, value, valueOrig);
         if (sqlParameter == null)
         {
-            sqlParameter = SqlAdaptersMapping.DbServer(context).QueryBuilder.CreateParameter(paramName, value ?? DBNull.Value);
+            sqlParameter = SqlAdaptersMapping.GetQueryBuilder(context).CreateParameter(paramName, value ?? DBNull.Value);
             var columnType = columnName is null ? null : tableInfo?.ColumnNamesTypesDict[columnName];
             if (value == null
                 && (columnType?.Contains(DbType.Binary.ToString(), StringComparison.OrdinalIgnoreCase) ?? false)) //"varbinary(max)".Contains("binary")
@@ -600,7 +600,7 @@ public static class BatchUtil
             return null;
 
         var relationalTypeMapping = propertyInfo?.GetRelationalTypeMapping();
-        using var dbCommand = SqlAdaptersMapping.DbServer(context).QueryBuilder.CreateCommand();
+        using var dbCommand = SqlAdaptersMapping.GetQueryBuilder(context).CreateCommand();
         try
         {
             return relationalTypeMapping?.CreateParameter(dbCommand, parameterName, value, propertyInfo?.IsNullable);
