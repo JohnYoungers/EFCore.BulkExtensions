@@ -19,10 +19,6 @@ public class ContextUtil
     public DbContextOptions GetOptions(IInterceptor dbInterceptor) => GetOptions([dbInterceptor]);
     public DbContextOptions GetOptions(IEnumerable<IInterceptor>? dbInterceptors = null) => GetOptions<TestContext>(dbInterceptors);
 
-    public DbContextOptions GetOptions<TDbContext>(IEnumerable<IInterceptor>? dbInterceptors = null, string databaseName = nameof(EFCoreBulkTest))
-        where TDbContext : DbContext
-        => GetOptions<TDbContext>(dbInterceptors, databaseName);
-
     public DbContextOptions GetOptions<TDbContext>(IEnumerable<IInterceptor>? dbInterceptors = null, 
         string databaseName = nameof(EFCoreBulkTest))
         where TDbContext : DbContext
@@ -31,15 +27,11 @@ public class ContextUtil
         
         // PostgreSQL is the only supported database type
         string connectionString = GetPostgreSqlConnectionString(databaseName);
-#if NET8_0
-        optionsBuilder.UseNpgsql(connectionString);
-#else
         var dataSource = new NpgsqlDataSourceBuilder(connectionString)
             .EnableDynamicJson()
             .UseNetTopologySuite()
             .Build();
         optionsBuilder.UseNpgsql(dataSource, opt => opt.UseNetTopologySuite());
-#endif
 
         if (dbInterceptors?.Any() == true)
         {
