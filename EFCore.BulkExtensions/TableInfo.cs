@@ -283,13 +283,8 @@ public class TableInfo
         OwnedTypesDict = navigations.Where(a => a.TargetEntityType.IsOwned()).ToDictionary(a => a.Name, a => a);
         HasOwnedTypes = OwnedTypesDict.Count > 0;
 
-#if NET7_0_OR_GREATER
         OwnedRegularTypesDict = navigations.Where(a => a.TargetEntityType.IsOwned() && !a.TargetEntityType.IsMappedToJson()).ToDictionary(a => a.Name, a => a);
         OwnedJsonTypesDict = navigations.Where(a => a.TargetEntityType.IsMappedToJson()).ToDictionary(a => a.Name, a => a);
-#else
-        OwnedRegularTypesDict = navigations.Where(a => a.TargetEntityType.IsOwned()).ToDictionary(a => a.Name, a => a);
-        OwnedJsonTypesDict = navigations.Where(a => a.TargetEntityType == null).ToDictionary(a => a.Name, a => a); // should be empty
-#endif
 
         HasJsonTypes = OwnedJsonTypesDict.Count > 0;
 
@@ -612,11 +607,7 @@ public class TableInfo
                             }
                         }
                         IEnumerable<INavigation>? ownedTypes;
-#if NET6_0
                         ownedTypes = ownedEntityType?.GetNavigations().Where(a => a.TargetEntityType.IsOwned() && !a.TargetEntityType.IsMappedToJson());
-#else
-                        ownedTypes = ownedEntityType?.GetNavigations().Where(a => a.TargetEntityType.IsOwned() && !a.TargetEntityType.IsMappedToJson());
-#endif
                         foreach (var ownedNavigationProperty in ownedTypes ?? [])
                         {
                             AddOwnedType(ownedNavigationProperty, prefix);

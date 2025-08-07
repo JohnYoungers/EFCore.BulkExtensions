@@ -19,7 +19,7 @@ public class EFCoreBulkTest
     private static readonly Func<TestContext, Item?> LastItemQuery = EF.CompileQuery<TestContext, Item?>(ctx => ctx.Items.LastOrDefault());
     private static readonly Func<TestContext, IEnumerable<Item>> AllItemsQuery = EF.CompileQuery<TestContext, IEnumerable<Item>>(ctx => ctx.Items.AsNoTracking());
 
-    [Theory]
+    [Fact]
     public void InsertEnumStringValue()
     {
         using var context = new TestContext();
@@ -380,31 +380,33 @@ public class EFCoreBulkTest
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     //[InlineData(DbServer.SqlServer, false)] // for speed comparison with Regular EF CUD operations
     public void OperationsTest(bool isBulk)
     {
         //DeletePreviousDatabase();
-        new EFCoreBatchTest().RunDeleteAll(sqlType);
+        new EFCoreBatchTest().RunDeleteAll();
 
-        RunInsert(isBulk, sqlType);
-        RunInsertOrUpdate(isBulk, sqlType);
-        RunUpdate(isBulk, sqlType);
+        RunInsert(isBulk);
+        RunInsertOrUpdate(isBulk);
+        RunUpdate(isBulk);
 
-        RunRead(sqlType);
+        RunRead();
 
         {
-            RunInsertOrUpdateOrDelete(isBulk, sqlType); // Not supported for Sqlite (has only UPSERT), instead use BulkRead, then split list into sublists and call separately Bulk methods for Insert, Update, Delete.
+            RunInsertOrUpdateOrDelete(isBulk); // Not supported for Sqlite (has only UPSERT), instead use BulkRead, then split list into sublists and call separately Bulk methods for Insert, Update, Delete.
         }
-        RunDelete(isBulk, sqlType);
+        RunDelete(isBulk);
 
         //CheckQueryCache();
     }
 
-    [Theory]
+    [Fact]
     public void SideEffectsTest()
     {
-        BulkOperationShouldNotCloseOpenConnection(sqlType, context => context.BulkInsert(new[] { new Item() }));
-        BulkOperationShouldNotCloseOpenConnection(sqlType, context => context.BulkUpdate(new[] { new Item() }));
+        BulkOperationShouldNotCloseOpenConnection(context => context.BulkInsert(new[] { new Item() }));
+        BulkOperationShouldNotCloseOpenConnection(context => context.BulkUpdate(new[] { new Item() }));
     }
 
     private static void BulkOperationShouldNotCloseOpenConnection(Action<TestContext> bulkOperation)
@@ -419,15 +421,7 @@ public class EFCoreBulkTest
             // we use a temp table to verify whether the connection has been closed (and re-opened) inside BulkUpdate(Async)
             var columnName = sqlHelper.DelimitIdentifier("Id");
             var tableName = sqlHelper.DelimitIdentifier("#MyTempTable");
-            var createTableSql = $" TABLE {tableName} ({columnName} INTEGER);";
-
-            createTableSql = // PostgreSQL-only implementation
-            {
-                $"CREATE TEMPORARY {createTableSql}",
-                $"CREATE {createTableSql}",
-                $"CREATE GLOBAL TEMPORARY {createTableSql}",
-                _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
-            };
+            var createTableSql = $"CREATE TEMPORARY TABLE {tableName} ({columnName} INTEGER);";
 
             context.Database.ExecuteSqlRaw(createTableSql);
 
@@ -788,12 +782,7 @@ public class EFCoreBulkTest
         Assert.Null(lastEntity);
 
         // RESET AutoIncrement
-        string deleteTableSql = // PostgreSQL-only implementation
-        {
-            $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
-            $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
-            _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
-        };
+        string deleteTableSql = $"ALTER SEQUENCE \"{nameof(Item)}_ItemId_seq\" RESTART WITH 1;";
         context.Database.ExecuteSqlRaw(deleteTableSql);
     }
 }

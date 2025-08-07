@@ -8,10 +8,10 @@ namespace EFCore.BulkExtensions.Tests.Owned;
 
 public class NestedOwnedTests
 {
-    [Theory]
+    [Fact]
     public async Task NestedOwnedTest()
     {
-        var options = new ContextUtil(sqlType)
+        var options = new ContextUtil()
             .GetOptions<NestedDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_NestedOwned");
         
         using var context = new NestedDbContext(options);

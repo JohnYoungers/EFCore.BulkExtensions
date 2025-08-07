@@ -20,31 +20,33 @@ public class EFCoreBulkTestAsync
     //private static readonly Func<TestContext, IEnumerable<Item>> AllItemsQuery = EF.CompileQuery<TestContext, IEnumerable<Item>>(ctx => ctx.Items.AsNoTracking());
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     //[InlineData(DatabaseType.SqlServer, false)] // for speed comparison with Regular EF CUD operations
     public async Task OperationsTestAsync(bool isBulk)
     {
         //await DeletePreviousDatabaseAsync().ConfigureAwait(false);
-        await new EFCoreBatchTestAsync().RunDeleteAllAsync(sqlType);
+        await new EFCoreBatchTestAsync().RunDeleteAllAsync();
 
         // Test can be run individually by commenting others and running each separately in order one after another
-        await RunInsertAsync(isBulk, sqlType);
-        await RunInsertOrUpdateAsync(isBulk, sqlType);
-        await RunUpdateAsync(isBulk, sqlType);
+        await RunInsertAsync(isBulk);
+        await RunInsertOrUpdateAsync(isBulk);
+        await RunUpdateAsync(isBulk);
 
-        await RunReadAsync(sqlType);
+        await RunReadAsync();
 
         {
-            await RunInsertOrUpdateOrDeleteAsync(isBulk, sqlType); // Not supported for Sqlite (has only UPSERT), instead use BulkRead, then split list into sublists and call separately Bulk methods for Insert, Update, Delete.
+            await RunInsertOrUpdateOrDeleteAsync(isBulk); // Not supported for Sqlite (has only UPSERT), instead use BulkRead, then split list into sublists and call separately Bulk methods for Insert, Update, Delete.
         }
-        //await RunDeleteAsync(isBulk, sqlType);
+        //await RunDeleteAsync(isBulk);
     }
 
-    [Theory]
+    [Fact]
     //[InlineData(DbServer.Sqlite)] // has to be run separately as single test, otherwise throws (SQLite Error 1: 'table "#MyTempTable1" already exists'.)
     public async Task SideEffectsTestAsync()
     {
-        await BulkOperationShouldNotCloseOpenConnectionAsync(sqlType, context => context.BulkInsertAsync(new[] { new Item() }), "1");
-        await BulkOperationShouldNotCloseOpenConnectionAsync(sqlType, context => context.BulkUpdateAsync(new[] { new Item() }), "2");
+        await BulkOperationShouldNotCloseOpenConnectionAsync(context => context.BulkInsertAsync(new[] { new Item() }), "1");
+        await BulkOperationShouldNotCloseOpenConnectionAsync(context => context.BulkUpdateAsync(new[] { new Item() }), "2");
     }
 
     private static async Task DeletePreviousDatabaseAsync()
@@ -71,15 +73,8 @@ public class EFCoreBulkTestAsync
             // we use a temp table to verify whether the connection has been closed (and re-opened) inside BulkUpdate(Async)
             var columnName = sqlHelper.DelimitIdentifier("Id");
             var tableName = sqlHelper.DelimitIdentifier("#MyTempTable" + tableSufix);
-            var createTableSql = $" TABLE {tableName} ({columnName} INTEGER);";
+            var createTableSql = $"CREATE TEMPORARY TABLE {tableName} ({columnName} INTEGER);";
 
-            createTableSql = // PostgreSQL-only implementation
-            {
-                $"CREATE TEMPORARY {createTableSql}",
-                $"CREATE {createTableSql}",
-                $"CREATE GLOBAL TEMPORARY {createTableSql}",
-                _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
-            };
             await context.Database.ExecuteSqlRawAsync(createTableSql);
 
             await bulkOperation(context);
@@ -401,12 +396,7 @@ public class EFCoreBulkTestAsync
         Assert.Null(lastEntity);
 
         // RESET AutoIncrement
-        string deleteTableSql = // PostgreSQL-only implementation
-        {
-            $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
-            $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
-            _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
-        };
+        string deleteTableSql = $"ALTER SEQUENCE \"{nameof(Item)}_ItemId_seq\" RESTART WITH 1;";
         await context.Database.ExecuteSqlRawAsync(deleteTableSql).ConfigureAwait(false);
     }
 }

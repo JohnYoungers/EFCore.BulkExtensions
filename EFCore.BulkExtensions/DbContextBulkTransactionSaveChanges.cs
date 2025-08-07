@@ -1,6 +1,4 @@
-﻿#if NET8_0_OR_GREATER
-using Medallion.Collections; // uses StrongNamer nuget to sign ref. with Strong Name
-#endif
+﻿using Medallion.Collections; // uses StrongNamer nuget to sign ref. with Strong Name
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -59,20 +57,12 @@ internal static class DbContextBulkTransactionSaveChanges
         // Topologically sort insert operations by FK
         var added = entriesGroupedByEntity.Where(x => x.State == EntityState.Added);
         var addedLookup = added.ToLookup(x => x.EntityType);
-#if NET8_0_OR_GREATER
         var sortedAdded = added.OrderTopologicallyBy(g => getFks(g.EntityType).SelectMany(x => addedLookup[x]));
-#else
-        var sortedAdded = added;
-#endif
 
         // Topologically sort delete operations by reverse FK
         var deleted = entriesGroupedByEntity.Where(x => x.State == EntityState.Deleted);
         var deletedLookup = deleted.ToLookup(x => x.EntityType);
-#if NET8_0_OR_GREATER
         var sortedDeleted = deleted.OrderTopologicallyBy(g => getFks(g.EntityType).SelectMany(x => deletedLookup[x])).Reverse();
-#else
-        var sortedDeleted = deleted;
-#endif
 
         var sortedGroups = sortedAdded
             .Concat(entriesGroupedByEntity.Where(x => x.State == EntityState.Modified))

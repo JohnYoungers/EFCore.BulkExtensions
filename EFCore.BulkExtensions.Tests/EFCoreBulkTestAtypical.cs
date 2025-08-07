@@ -65,14 +65,14 @@ public class EFCoreBulkTestAtypical
 #pragma warning disable
         context.Documents.BatchDelete();
 #pragma warning disable
-        SeqGuid.Create(sqlType);
+        SeqGuid.Create();
 
         var entities = new List<Document>();
         for (int i = 1; i <= 5; i++)
         {
             entities.Add(new Document
             {
-                DocumentId = SeqGuid.Create(sqlType),
+                DocumentId = SeqGuid.Create(),
                 Content = "Info " + i
             });
         };
@@ -131,10 +131,10 @@ public class EFCoreBulkTestAtypical
         Assert.Equal(entities[0].Data, entities2[0].Data);
     }
 
-    [Theory]
+    [Fact]
     public void UpsertOrderTest()
     {
-        new EFCoreBatchTest().RunDeleteAll(sqlType);
+        new EFCoreBatchTest().RunDeleteAll();
 
         using var context = new TestContext();
         context.Items.Add(new Item { Name = "name 1", Description = "info 1" });
@@ -489,18 +489,8 @@ public class EFCoreBulkTestAtypical
     {
         using var context = new TestContext();
 
-        {
-            context.Truncate<ChangeLog>();
-            context.Database.ExecuteSqlRaw("TRUNCATE TABLE [" + nameof(ChangeLog) + "]");
-        }
-        {
-            context.Truncate<ChangeLog>();
-        }
-        else
-        {
-            //context.ChangeLogs.BatchDelete(); // TODO
-            context.BulkDelete(context.ChangeLogs.ToList());
-        }
+        // PostgreSQL approach
+        context.Truncate<ChangeLog>();
 
         var entities = new List<ChangeLog>();
         for (int i = 1; i <= EntitiesNumber; i++)
@@ -557,18 +547,9 @@ public class EFCoreBulkTestAtypical
     {
         using var context = new TestContext();
 
-        {
-            context.Truncate<Tracker>();
-            context.Database.ExecuteSqlRaw("TRUNCATE TABLE [" + nameof(Tracker) + "]");
-        }
-        {
-            context.Truncate<ChangeLog>();
-        }
-        else
-        {
-            //context.ChangeLogs.BatchDelete(); // TODO
-            context.BulkDelete(context.ChangeLogs.ToList());
-        }
+        // PostgreSQL approach
+        context.Truncate<Tracker>();
+        context.Truncate<ChangeLog>();
 
         var entities = new List<Tracker>();
         for (int i = 1; i <= EntitiesNumber; i++)
@@ -612,15 +593,9 @@ public class EFCoreBulkTestAtypical
     {
         using var context = new TestContext();
 
-        {
-            context.Truncate<ItemLink>();
-            context.Database.ExecuteSqlRaw("TRUNCATE TABLE [" + nameof(ItemLink) + "]");
-        }
-        else
-        {
-            //context.ChangeLogs.BatchDelete(); // TODO
-            context.BulkDelete(context.ItemLinks.ToList());
-        }
+        // PostgreSQL approach
+        context.Truncate<ItemLink>();
+
         //context.BulkDelete(context.Items.ToList()); // On table with FK Truncate does not work
 
         if (!context.Items.Any())
@@ -680,7 +655,7 @@ public class EFCoreBulkTestAtypical
     {
         using var context = new TestContext();
 
-        new EFCoreBatchTest().RunDeleteAll(sqlType);
+        new EFCoreBatchTest().RunDeleteAll();
 
         var entitiesInitial = new List<Item>();
         for (int i = 1; i <= 10; ++i)
@@ -1257,7 +1232,7 @@ public class EFCoreBulkTestAtypical
     {
         using var context = new TestContext();
 
-        new EFCoreBatchTest().RunDeleteAll(sqlType);
+        new EFCoreBatchTest().RunDeleteAll();
 
         var list = new List<Item>
         {

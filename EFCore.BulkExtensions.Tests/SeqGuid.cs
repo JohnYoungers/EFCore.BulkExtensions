@@ -14,8 +14,6 @@ public static class SeqGuid
     public static Guid Create()
     {
         // PostgreSQL-only implementation
-            return SqlNoRepeatCombs.Create();
-            return PGCombs.Create();
-            return UnixCombs.Create();
+        return PGCombs.Create();
     }
 }

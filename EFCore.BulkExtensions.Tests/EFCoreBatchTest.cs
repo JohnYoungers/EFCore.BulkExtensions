@@ -12,7 +12,7 @@ public class EFCoreBatchTest
 {
     protected static int EntitiesNumber => 1000;
 
-    [Theory]
+    [Fact]
     public void BatchConverterTest()
     {
         using var context = new TestContext();
@@ -31,7 +31,7 @@ public class EFCoreBatchTest
         Assert.Equal(currentDate, contextRead.Infos.First().DateTimeOff);
     }
 
-    [Theory]
+    [Fact]
     public void BatchTest()
     {
         RunDeleteAll();
