@@ -38,7 +38,7 @@ internal static class DbContextBulkTransactionSaveChanges
         {
             bulkConfig = new BulkConfig { };
         }
-        // SetOutputIdentity functionality removed - FK propagation may not work properly
+        // IncludeGraph and FK propagation functionality removed
 
         var entries = context.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged);
         var entriesGroupedByEntity = entries.GroupBy(a => new { EntityType = GetNonProxyType(a.Entity.GetType()), a.State },
@@ -131,48 +131,6 @@ internal static class DbContextBulkTransactionSaveChanges
                     else
                     {
                         entityPropertyDict = fastPropertyDicts[entityType.Name];
-                    }
-
-                    if (bulkConfig.OnSaveChangesSetFK)
-                    {
-                        var navigations = entityModelType.GetNavigations().Where(x => !x.IsCollection && !x.TargetEntityType.IsOwned());
-                        if (navigations.Any())
-                        {
-                            foreach (var navigation in navigations)
-                            {
-                                // when FK entity was not modified it will not be in Dict, but also FK is auto set so no need here
-                                if (fastPropertyDicts.ContainsKey(navigation.ClrType.Name)) // otherwise set it:
-                                {
-                                    var parentPropertyDict = fastPropertyDicts[navigation.ClrType.Name];
-
-                                    var fkName = navigation.ForeignKey.Properties.Count > 0
-                                        ? navigation.ForeignKey.Properties[0].Name
-                                        : null;
-
-                                    var pkName = navigation.ForeignKey.PrincipalKey.Properties.Count > 0
-                                        ? navigation.ForeignKey.PrincipalKey.Properties[0].Name
-                                        : null;
-
-                                    if (pkName is not null && fkName is not null)
-                                    {
-                                        foreach (var entity in entryGroup.Entities)
-                                        {
-                                            var parentEntity = entityPropertyDict[navigation.Name].Get(entity);
-                                            if (parentEntity is not null)
-                                            {
-                                                var pkValue = parentPropertyDict[pkName].Get(parentEntity);
-                                                if (pkValue is not null)
-                                                {
-                                                    entityPropertyDict[fkName].Set(entity, pkValue);
-                                                }
-                                            }
-
-                                        }
-                                    }
-
-                                }
-                            }
-                        }
                     }
 
                     string methodName = EntityStateBulkMethodDict[entryGroup.State].Key;

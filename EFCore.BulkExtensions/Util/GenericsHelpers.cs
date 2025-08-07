@@ -11,7 +11,7 @@ public static class GenericsHelpers
 {
     internal static IEnumerable<string> GetPropertiesDefaultValue<T>(this T value, Type type, TableInfo tableInfo) where T : class
     {
-        // type not obtained from typeof(T) but sent as arg. for IncludeGraph in which case it's not declared the same way
+        // type not obtained from typeof(T) but sent as arg for generic operations
         // Obtain all fields with type pointer.
 
         var arrayPropertyInfos = type.GetProperties();

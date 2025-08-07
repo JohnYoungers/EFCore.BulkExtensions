@@ -26,12 +26,6 @@ internal static class DbContextBulkTransaction
                 return;
             }
 
-            if (bulkConfig?.IncludeGraph == true)
-            {
-                DbContextBulkTransactionGraphUtil.ExecuteWithGraph(context, entities, operationType, bulkConfig, progress);
-                return;
-            }
-
             var tableInfo = TableInfo.CreateInstance(context, type, entities, operationType, bulkConfig);
 
             switch (operationType)
@@ -68,12 +62,6 @@ internal static class DbContextBulkTransaction
             if (operationType == OperationType.SaveChanges)
             {
                 await DbContextBulkTransactionSaveChanges.SaveChangesAsync(context, bulkConfig, progress, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            if (bulkConfig?.IncludeGraph == true)
-            {
-                await DbContextBulkTransactionGraphUtil.ExecuteWithGraphAsync(context, entities, operationType, bulkConfig, progress, cancellationToken).ConfigureAwait(false);
                 return;
             }
 

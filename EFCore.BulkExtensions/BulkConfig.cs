@@ -209,13 +209,7 @@ public class BulkConfig
 
 
     
-    /// <summary>
-    ///     When set all entites that have relations with main ones from the list are also merged into theirs tables.
-    /// </summary>
-    /// <remarks>
-    ///     Essentially enables with one call bulk ops on multiple tables that are connected, like parent-child relationship with FK
-    /// </remarks>
-    public bool IncludeGraph { get; set; }
+
 
     /// <summary>
     ///     Removes the clause 'EXISTS ... EXCEPT' from Merge statement which then updates even same data, useful when need to always active triggers.
@@ -248,14 +242,7 @@ public class BulkConfig
 
 
 
-    /// <summary>
-    ///     When using BulkSaveChanges with multiply entries that have FK relationship which is Db generated, this set proper value after reading parent PK from Db.
-    ///     IF PK are generated in memory like are some Guid then this can be set to false for better efficiency.
-    /// </summary>
-    /// <remarks>
-    ///     Only used with BulkSaveChanges.
-    /// </remarks>
-    public bool OnSaveChangesSetFK { get; set; } = true;
+
 
     /// <summary>
     ///     When set to True it ignores GlobalQueryFilters if they exist on the DbSet.
