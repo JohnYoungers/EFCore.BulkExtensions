@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,13 +12,22 @@ namespace EFCore.BulkExtensions;
 
 internal static class DbContextBulkTransaction
 {
+    private static readonly ActivitySource ActivitySource = new("EFCore.BulkExtensions");
+
     public static void Execute<T>(DbContext context, Type? type, IEnumerable<T> entities, OperationType operationType, BulkConfig? bulkConfig, Action<decimal>? progress) where T : class
     {
         UpdateSqlAdaptersProps(context);
 
         type ??= typeof(T);
 
-        using (ActivitySources.StartExecuteActivity(operationType, entities.Count()))
+        var activity = ActivitySource.StartActivity("EFCore.BulkExtensions.BulkExecute");
+        if (activity != null)
+        {
+            activity.AddTag("operationType", operationType.ToString("G"));
+            activity.AddTag("entitiesCount", entities.Count().ToString(CultureInfo.InvariantCulture));
+        }
+
+        using (activity)
         {
             if (!IsValidTransaction(entities, operationType, bulkConfig)) return;
 
@@ -55,7 +66,14 @@ internal static class DbContextBulkTransaction
 
         type ??= typeof(T);
 
-        using (ActivitySources.StartExecuteActivity(operationType, entities.Count()))
+        var activity = ActivitySource.StartActivity("EFCore.BulkExtensions.BulkExecute");
+        if (activity != null)
+        {
+            activity.AddTag("operationType", operationType.ToString("G"));
+            activity.AddTag("entitiesCount", entities.Count().ToString(CultureInfo.InvariantCulture));
+        }
+
+        using (activity)
         {
             if (!IsValidTransaction(entities, operationType, bulkConfig)) return;
 
