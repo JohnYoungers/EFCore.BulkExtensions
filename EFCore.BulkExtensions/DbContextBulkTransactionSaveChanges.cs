@@ -38,10 +38,7 @@ internal static class DbContextBulkTransactionSaveChanges
         {
             bulkConfig = new BulkConfig { };
         }
-        if (bulkConfig.OnSaveChangesSetFK && bulkConfig.SetOutputIdentity == false) // When FK is set by DB then SetOutput is required
-        {
-            bulkConfig.SetOutputIdentity = true;
-        }
+        // SetOutputIdentity functionality removed - FK propagation may not work properly
 
         var entries = context.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged);
         var entriesGroupedByEntity = entries.GroupBy(a => new { EntityType = GetNonProxyType(a.Entity.GetType()), a.State },

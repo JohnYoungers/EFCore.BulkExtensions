@@ -77,12 +77,10 @@ public abstract class SqlQueryBuilder
             timeStampColumn = $", [{tableInfo.TimeStampColumnName}] = CAST('' AS {TableInfo.TimeStampOutColumnType})"; // tsType:varbinary(8)
         }
         string temporalTableColumns = "";
-        if (tableInfo.HasTemporalColumns && isOutputTable == true)
+        // Temporal columns support removed
+        if (false && tableInfo.HasTemporalColumns && isOutputTable == true)
         {
-            tableInfo.BulkConfig.TemporalColumns.ForEach(columnName => {
-                columnsNames.Remove(columnName);
-                temporalTableColumns += $", T.[{columnName}]";
-            });
+            // Temporal columns functionality removed
         }
 
         string statsColumn = (tableInfo.BulkConfig.CalculateStats && isOutputTable) ? $", [{tableInfo.SqlActionIUD}] = CAST('' AS char(1))" : "";
@@ -324,13 +322,10 @@ public abstract class SqlQueryBuilder
         if (tableInfo.BulkConfig.CalculateStats)
             isUpdateStatsValue = ",SUBSTRING($action, 1, 1)";
 
-        if (tableInfo.BulkConfig.PreserveInsertOrder)
+        // PreserveInsertOrder functionality removed
+        if (false)
         {
-            int numberOfEntities = tableInfo.BulkConfig.CustomSourceTableName == null ? tableInfo.NumberOfEntities
-                                                                                      : int.MaxValue;
-            var orderBy = (primaryKeys.Count == 0) ? string.Empty
-                                                   : $"ORDER BY {GetCommaSeparatedColumns(primaryKeys)}";
-            sourceTable = $"(SELECT TOP {numberOfEntities} * FROM {sourceTable} {orderBy})";
+            // Order preservation logic removed
         }
 
         string textWITH_HOLDLOCK = tableInfo.BulkConfig.WithHoldlock ? " WITH (HOLDLOCK)" : string.Empty;
@@ -442,10 +437,7 @@ public abstract class SqlQueryBuilder
             q += $" OUTPUT {commaSeparatedColumnsNames}" + isUpdateStatsValue +
                  $" INTO {tableInfo.FullTempOutputTableName}";
         }
-        if(tableInfo.BulkConfig.UseOptionLoopJoin)
-        {
-            q += " OPTION (LOOP JOIN)";
-        }
+        // UseOptionLoopJoin functionality removed (SQL Server specific optimization)
         
         q += ";";
 

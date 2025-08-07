@@ -11,35 +11,13 @@ namespace EFCore.BulkExtensions;
 /// </summary>
 public class BulkConfig
 {
-    /// <summary>
-    ///     Makes sure that entites are inserted to Db as ordered in entitiesList.
-    /// </summary>
-    /// <value>
-    ///     Default value is <c>true</c>, if table has Identity column (autoincrement) and IDs being 0 in list they will temporarily be changed automatically from 0s into range -N:-1.
-    /// </value>
-    public bool PreserveInsertOrder { get; set; } = true;
 
-    /// <summary>
-    ///     When set IDs zero values will be updated to new ones from database (Have function only when PK has Identity)
-    /// </summary>
-    /// <remarks>
-    ///     Useful when BulkInsert is done to multiple related tables, to get PK of table and to set it as FK for second one.
-    /// </remarks>
-    public bool SetOutputIdentity { get; set; }
 
-    /// <summary>
-    ///    Used only when SetOutputIdentity is set to true, and if this remains True (which is default) all columns are reloaded from Db.
-    ///    When changed to false only Identity column is loaded.
-    /// </summary>
-    /// <remarks>
-    ///     Used for efficiency to reduce load back from DB.
-    /// </remarks>
-    public bool SetOutputNonIdentityColumns { get; set; } = true;
 
-    /// <summary>
-    ///    Used only when SetOutputIdentity is set to true, and when changed to True then columns that were no included in Upsert are not loaded.
-    /// </summary>
-    public bool LoadOnlyIncludedColumns { get; set; } = false;
+
+
+
+
 
     /// <summary>
     ///     Propagated to SqlBulkCopy util object.
@@ -83,16 +61,7 @@ public class BulkConfig
     /// </remarks>
     public bool UseUnlogged { get; set; }
 
-    /// <summary>
-    ///     When set it appends 'OPTION (LOOP JOIN)' for SqlServer, to reduce potential deadlocks on tables that have FKs.
-    /// </summary>
-    /// <remarks>
-    ///     Use this hint as a last resort for experienced devs and db admins.
-    /// </remarks>
-    /// <value>
-    ///     Default value is <c>false</c>.
-    /// </value>
-    public bool UseOptionLoopJoin { get; set; } = false;
+
 
     /// <summary>
     ///     Enables specifying custom name of table in Db that does not have to be mapped to Entity.
@@ -126,7 +95,7 @@ public class BulkConfig
     public bool EnableStreaming { get; set; }
 
     /// <summary>
-    ///     Can be set to True if want to have tracking of entities from BulkRead or when SetOutputIdentity is set.
+    ///     Can be set to True if want to have tracking of entities from BulkRead.
     /// </summary>
     public bool TrackingEntities { get; set; }
 
@@ -141,9 +110,6 @@ public class BulkConfig
     /// <summary>
     ///     When set to <c>true</c> the result is return in <c>BulkConfig.StatsInfo { StatsNumberInserted, StatsNumberUpdated}</c>.
     /// </summary>
-    /// <remarks>
-    ///     If used for pure Insert (with Batching) then SetOutputIdentity should also be configured because Merge have to be used.
-    /// </remarks>
     public bool CalculateStats { get; set; }
 
     /// <summary>
@@ -241,10 +207,7 @@ public class BulkConfig
     public Func<object, string, object?>? ShadowPropertyValue { get; set; } 
 
 
-    /// <summary>
-    ///    Shadow columns used for Temporal table. Has defaults elements: 'PeriodStart' and 'PeriodEnd'. Can be changed if temporal columns have custom names.
-    /// </summary>
-    public List<string> TemporalColumns { get; set; } = new List<string> { "PeriodEnd", "PeriodStart" };
+
     
     /// <summary>
     ///     When set all entites that have relations with main ones from the list are also merged into theirs tables.
@@ -283,13 +246,7 @@ public class BulkConfig
     /// </remarks>
     public int SRID { get; set; } = 4326;
 
-    /// <summary>
-    ///     When type dbtype datetime2 has precision less then default 7, for example 'datetime2(3)' SqlBulkCopy does Floor instead of Round so Rounding done in memory to make sure inserted values are same as with regular SaveChanges.
-    /// </summary>
-    /// <remarks>
-    ///     Only for SqlServer.
-    /// </remarks>
-    public bool DateTime2PrecisionForceRound { get; set; }
+
 
     /// <summary>
     ///     When using BulkSaveChanges with multiply entries that have FK relationship which is Db generated, this set proper value after reading parent PK from Db.

@@ -36,7 +36,7 @@ internal static class DbContextBulkTransaction
 
             switch (operationType)
             {
-                case OperationType.Insert when tableInfo.BulkConfig is { SetOutputIdentity: false, CustomSourceTableName: null }:
+                case OperationType.Insert when tableInfo.BulkConfig.CustomSourceTableName == null:
                     SqlBulkOperation.Insert(context, type, entities, tableInfo, progress);
                     break;
 
@@ -81,7 +81,7 @@ internal static class DbContextBulkTransaction
 
             switch (operationType)
             {
-                case OperationType.Insert when !tableInfo.BulkConfig.SetOutputIdentity:
+                case OperationType.Insert:
                     await SqlBulkOperation.InsertAsync(context, type, entities, tableInfo, progress, cancellationToken).ConfigureAwait(false);
                     break;
 

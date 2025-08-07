@@ -30,8 +30,8 @@ internal static class DbContextBulkTransactionGraphUtil
             && operationType != OperationType.Update)
             throw new InvalidBulkConfigException($"{nameof(BulkConfig)}.{nameof(BulkConfig.IncludeGraph)} only supports Insert or Update operations.");
 
-        bulkConfig.PreserveInsertOrder = true; // Required for SetOutputIdentity ('true' is default but here explicitly assigned again in case it was changed to 'false' in BulkConfing)
-        bulkConfig.SetOutputIdentity = true; // If this is set to false, won't be able to propogate new primary keys to the relationships
+        // PreserveInsertOrder and SetOutputIdentity functionality removed
+        // Graph operations may not work properly without identity output
 
         // If this is set to false, wont' be able to support some code first model types as EFCore uses shadow properties when a relationship's foreign keys arent explicitly defined
         bulkConfig.EnableShadowProperties = true;

@@ -331,7 +331,7 @@ public class PostgreSqlAdapter
             }
 
             var sqlMergeTable = PostgreSqlQueryBuilder.MergeTable<T>(tableInfo, operationType);
-            if (operationType != OperationType.Read && (!tableInfo.BulkConfig.SetOutputIdentity || operationType == OperationType.Delete))
+            if (operationType != OperationType.Read && operationType == OperationType.Delete)
             {
                 if (isAsync)
                 {

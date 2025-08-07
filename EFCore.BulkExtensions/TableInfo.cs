@@ -41,7 +41,7 @@ public class TableInfo
     public string FullTempTableName => $"{TempSchemaFormated}[{TempDBPrefix}{TempTableName}]";
     public string FullTempOutputTableName => $"{SchemaFormated}[{TempDBPrefix}{TempTableName}Output]";
 
-    public bool CreateOutputTable => BulkConfig.SetOutputIdentity || BulkConfig.CalculateStats;
+    public bool CreateOutputTable => BulkConfig.CalculateStats;
 
     public bool InsertToTempTable { get; set; }
     public string? IdentityColumnName { get; set; }
@@ -124,7 +124,7 @@ public class TableInfo
         tableInfo.BulkConfig.OperationType = operationType;
 
         bool isExplicitTransaction = context.Database.GetDbConnection().State == ConnectionState.Open;
-        if (tableInfo.BulkConfig.UseTempDB == true && !isExplicitTransaction && (operationType != OperationType.Insert || tableInfo.BulkConfig.SetOutputIdentity))
+        if (tableInfo.BulkConfig.UseTempDB == true && !isExplicitTransaction && operationType != OperationType.Insert)
         {
             throw new InvalidOperationException("When 'UseTempDB' is set then BulkOperation has to be inside Transaction. " +
                                                 "Otherwise destination table gets dropped too early because transaction ends before operation is finished.");
@@ -231,10 +231,7 @@ public class TableInfo
         foreach (var entityProperty in entityType.GetProperties())
         {
             var columnName = entityProperty.GetColumnName(ObjectIdentifier);
-            bool isTemporalColumn = columnName is not null
-                && entityProperty.IsShadowProperty()
-                && entityProperty.ClrType == typeof(DateTime)
-                && BulkConfig.TemporalColumns.Contains(columnName);
+            bool isTemporalColumn = false; // Temporal columns support removed
 
             HasTemporalColumns = HasTemporalColumns || isTemporalColumn;
 
@@ -245,18 +242,7 @@ public class TableInfo
             ColumnNamesTypesDict.Add(columnName, entityProperty.GetColumnType());
             ColumnToPropertyDictionary.Add(columnName, entityProperty);
 
-            if (BulkConfig.DateTime2PrecisionForceRound)
-            {
-                var columnMappings = entityProperty.GetTableColumnMappings();
-                var firstMapping = columnMappings.FirstOrDefault();
-                var columnType = firstMapping?.Column.StoreType;
-                if ((columnType?.StartsWith("datetime2(") ?? false) && (!columnType?.EndsWith("7)") ?? false))
-                {
-                    string precisionText = columnType!.Substring(10, 1);
-                    int precision = int.Parse(precisionText);
-                    DateTime2PropertiesPrecisionLessThen7Dict.Add(firstMapping!.Property.Name, precision); // SqlBulkCopy does Floor instead of Round so Rounding done in memory
-                }
-            }
+
         }
 
         bool areSpecifiedUpdateByProperties = BulkConfig.UpdateByProperties?.Count > 0;
@@ -373,11 +359,7 @@ public class TableInfo
         // TimeStamp prop. is last column in OutputTable since it is added later with varbinary(8) type in which Output can be inserted
         var outputProperties = allPropertiesExceptTimeStamp.Where(a => a.GetColumnName(ObjectIdentifier) != null).Concat(timeStampProperties);
         OutputPropertyColumnNamesDict = outputProperties.ToDictionary(a => a.Name, b => b.GetColumnName(ObjectIdentifier)?.Replace("]", "]]") ?? string.Empty); // square brackets have to be escaped
-        if (HasTemporalColumns)
-        {
-            foreach (var temporalColumns in BulkConfig.TemporalColumns)
-                OutputPropertyColumnNamesDict.Add(temporalColumns, temporalColumns);
-        }
+        // Temporal columns support removed
 
         bool AreSpecifiedPropertiesToInclude = BulkConfig.PropertiesToInclude?.Count > 0;
         bool AreSpecifiedPropertiesToExclude = BulkConfig.PropertiesToExclude?.Count > 0;
@@ -718,8 +700,8 @@ public class TableInfo
 
                 if (!FastPropertyDict.Any(a => a.Key == configSpecifiedPropertyName) &&
                     !configSpecifiedPropertyName.Contains('.') && // Those with dot "." skiped from validating for now since FastPropertyDict here does not contain them
-                    !(specifiedPropertiesListName == nameof(BulkConfig.PropertiesToIncludeOnUpdate) && configSpecifiedPropertyName == "") && // In PropsToIncludeOnUpdate empty is allowed as config for skipping Update
-                    !BulkConfig.TemporalColumns.Contains(configSpecifiedPropertyName)
+                    !(specifiedPropertiesListName == nameof(BulkConfig.PropertiesToIncludeOnUpdate) && configSpecifiedPropertyName == "") // In PropsToIncludeOnUpdate empty is allowed as config for skipping Update
+                    // Temporal columns support removed
                     )
                 {
                     throw new InvalidOperationException($"PropertyName '{configSpecifiedPropertyName}' specified in '{specifiedPropertiesListName}' not found in Properties.");
@@ -900,7 +882,7 @@ public class TableInfo
 
     internal void UpdateReadEntities<T>(IEnumerable<T> entities, IList<T> existingEntities, DbContext context)
     {
-        var propColDict = BulkConfig.LoadOnlyIncludedColumns ? PropertyColumnNamesDict : OutputPropertyColumnNamesDict;
+        var propColDict = OutputPropertyColumnNamesDict; // LoadOnlyIncludedColumns option removed
         List<string> propertyNames = propColDict.Keys.ToList();
         if (HasOwnedTypes)
         {
@@ -979,82 +961,7 @@ public class TableInfo
     /// <param name="reset"></param>
     public void CheckToSetIdentityForPreserveOrder<T>(TableInfo tableInfo, IEnumerable<T> entities, bool reset = false)
     {
-        string identityPropertyName = PropertyColumnNamesDict.SingleOrDefault(a => a.Value == IdentityColumnName).Key;
-
-        bool doSetIdentityColumnsForInsertOrder = BulkConfig.PreserveInsertOrder &&
-                                                  entities.Count() > 1 &&
-                                                  PrimaryKeysPropertyColumnNameDict?.Count == 1 &&
-                                                  PrimaryKeysPropertyColumnNameDict?.Select(a => a.Value).First() == IdentityColumnName;
-
-        var operationType = tableInfo.BulkConfig.OperationType;
-        if (doSetIdentityColumnsForInsertOrder == true)
-        {
-            if (operationType == OperationType.Insert) // Insert should either have all zeros for automatic order, or they can be manually set
-            {
-                var propertyValue = FastPropertyDict[identityPropertyName].Get(entities.ElementAt(0)!);
-                var identityValue = Convert.ToInt64(IdentityColumnConverter != null ? IdentityColumnConverter.ConvertToProvider(propertyValue) : propertyValue);
-
-                if (identityValue != 0) // (to check it fast, condition for all 0s is only done on first one)
-                {
-                    doSetIdentityColumnsForInsertOrder = false;
-                }
-            }
-        }
-
-        if (doSetIdentityColumnsForInsertOrder)
-        {
-            bool sortEntities = !reset && BulkConfig.SetOutputIdentity &&
-                                (operationType == OperationType.Update || operationType == OperationType.InsertOrUpdate || operationType == OperationType.InsertOrUpdateOrDelete);
-            var entitiesExistingDict = new Dictionary<long, T>();
-            var entitiesNew = new List<T>();
-            var entitiesSorted = new List<T>();
-
-            long i = -entities.Count();
-            foreach (var entity in entities)
-            {
-                var identityFastProperty = FastPropertyDict[identityPropertyName];
-                var propertyValue = identityFastProperty.Get(entity!);
-                long identityValue = Convert.ToInt64(IdentityColumnConverter != null ? IdentityColumnConverter.ConvertToProvider(propertyValue) : propertyValue);
-
-                if (identityValue == 0 ||         // set only zero(0) values
-                    (identityValue < 0 && reset)) // set only negative(-N) values if reset
-                {
-                    long value = reset ? 0 : i;
-                    object idValue;
-                    var idType = identityFastProperty.Property.PropertyType;
-                    if (idType == typeof(ushort))
-                        idValue = (ushort)value;
-                    if (idType == typeof(short))
-                        idValue = (short)value;
-                    else if (idType == typeof(uint))
-                        idValue = (uint)value;
-                    else if (idType == typeof(int))
-                        idValue = (int)value;
-                    else if (idType == typeof(ulong))
-                        idValue = (ulong)value;
-                    else if (idType == typeof(decimal))
-                        idValue = (decimal)value;
-                    else
-                        idValue = value; // type 'long' left as default
-
-                    identityFastProperty.Set(entity!, IdentityColumnConverter != null ? IdentityColumnConverter.ConvertFromProvider(idValue) : idValue);
-                    i++;
-                }
-                if (sortEntities)
-                {
-                    if (identityValue != 0)
-                        entitiesExistingDict.Add(identityValue, entity); // first load existing ones
-                    else
-                        entitiesNew.Add(entity);
-                }
-            }
-            if (sortEntities)
-            {
-                entitiesSorted = entitiesExistingDict.OrderBy(a => a.Key).Select(a => a.Value).ToList();
-                entitiesSorted.AddRange(entitiesNew); // then append new ones
-                tableInfo.EntitiesSortedReference = entitiesSorted.Cast<object>().ToList();
-            }
-        }
+        // PreserveInsertOrder functionality removed - this method now does nothing
     }
 
     /// <summary>
@@ -1093,116 +1000,7 @@ public class TableInfo
     /// <param name="entitiesWithOutputIdentity"></param>
     public void UpdateEntitiesIdentity<T>(DbContext context, TableInfo tableInfo, IEnumerable<T> entities, IEnumerable<object> entitiesWithOutputIdentity)
     {
-        string? identifierPropertyName = null;
-        if (IdentityColumnName != null)
-        {
-            identifierPropertyName = OutputPropertyColumnNamesDict.SingleOrDefault(a => a.Value == IdentityColumnName).Key; // is Identity autoincrement 
-        }
-        else if (PrimaryKeysPropertyColumnNameDict.Count() == 1 && 
-                 DefaultValueProperties.Contains(PrimaryKeysPropertyColumnNameDict.FirstOrDefault().Key))                   // or PK with default sql value
-        {
-            identifierPropertyName = PrimaryKeysPropertyColumnNameDict.FirstOrDefault().Key;
-        }
-
-        if (identifierPropertyName != null)
-        {
-            var fastProperty = FastPropertyDict[identifierPropertyName];
-
-            if (fastProperty.Property.PropertyType == typeof(string) ||
-                fastProperty.Property.PropertyType == typeof(Guid))
-            {
-                entities = entities.OrderBy(p => fastProperty.Property!.GetValue(p, null)).ToList();
-                entitiesWithOutputIdentity = entitiesWithOutputIdentity.OrderBy(p => fastProperty.Property!.GetValue(p, null)).ToList();
-            }
-        }
-
-        if (BulkConfig.PreserveInsertOrder) // Updates Db changed Columns in entityList
-        {
-            int countDiff = entities.Count() - entitiesWithOutputIdentity.Count();
-            if (countDiff > 0) // When some ommited from Merge because of TimeStamp conflict then changes are not loaded but output is set in TimeStampInfo
-            {
-                tableInfo.BulkConfig.TimeStampInfo = new TimeStampInfo
-                {
-                    NumberOfSkippedForUpdate = countDiff,
-                    EntitiesOutput = entitiesWithOutputIdentity.Cast<object>().ToList()
-                };
-                return;
-            }
-
-            if (tableInfo.EntitiesSortedReference != null)
-            {
-                entities = tableInfo.EntitiesSortedReference.Cast<T>().ToList();
-            }
-
-            var entitiesDict = new Dictionary<object, T>();
-            var numberOfOutputEntities = Math.Min(NumberOfEntities, entitiesWithOutputIdentity.Count());
-            for (int i = 0; i < numberOfOutputEntities; i++)
-            {
-                if (identifierPropertyName != null)
-                {
-                    var customPK = tableInfo.PrimaryKeysPropertyColumnNameDict.Keys;
-                    if (!(customPK.Count == 1 && customPK.First() == identifierPropertyName) &&
-                        (tableInfo.BulkConfig.OperationType == OperationType.Update ||
-                         tableInfo.BulkConfig.OperationType == OperationType.InsertOrUpdate ||
-                         tableInfo.BulkConfig.OperationType == OperationType.InsertOrUpdateOrDelete)
-                       ) // (UpsertOrderTest) fix for BulkInsertOrUpdate assigns wrong output IDs when PreserveInsertOrder = true and SetOutputIdentity = true
-                    {
-                        if (entitiesDict.Count == 0)
-                        {
-                            foreach (var entity in entities)
-                            {
-                                PrimaryKeysPropertyColumnNameValues customPKValue = new(customPK.Select(c => FastPropertyDict[c].Get(entity!)));
-                                entitiesDict.Add(customPKValue, entity);
-                            }
-                        }
-                        var identityPropertyValue = FastPropertyDict[identifierPropertyName].Get(entitiesWithOutputIdentity.ElementAt(i));
-                        PrimaryKeysPropertyColumnNameValues customPKOutputValue = new(customPK.Select(c => FastPropertyDict[c].Get(entitiesWithOutputIdentity.ElementAt(i))));
-                        FastPropertyDict[identifierPropertyName].Set(entitiesDict[customPKOutputValue]!, identityPropertyValue);
-                    }
-                    else
-                    {
-                        bool outputIdentityOnly = BulkConfig.SetOutputNonIdentityColumns == false && IdentityColumnName != null;
-                        var element = entitiesWithOutputIdentity.ElementAt(i);
-                        var identityPropertyValue = outputIdentityOnly ? element
-                                                                       : FastPropertyDict[identifierPropertyName].Get(element);
-                        FastPropertyDict[identifierPropertyName].Set(entities.ElementAt(i)!, identityPropertyValue);
-                    }
-                }
-
-                if (TimeStampColumnName != null) // timestamp/rowversion is also generated by the SqlServer so if exist should be updated as well
-                {
-                    string timeStampPropertyName = OutputPropertyColumnNamesDict.SingleOrDefault(a => a.Value == TimeStampColumnName).Key;
-                    var timeStampPropertyValue = FastPropertyDict[timeStampPropertyName].Get(entitiesWithOutputIdentity.ElementAt(i));
-                    FastPropertyDict[timeStampPropertyName].Set(entities.ElementAt(i)!, timeStampPropertyValue);
-                }
-
-                var outputProperties = tableInfo.OutputPropertyColumnNamesDict.Keys;
-                var propertiesToLoad = outputProperties.Where(a => a != identifierPropertyName &&
-                                                                   a != TimeStampColumnName &&                          // already loaded in segmet above
-                                                                   !tableInfo.BulkConfig.TemporalColumns.Contains(a) && // temporal columns not accessible as direct property
-                                                                   (tableInfo.DefaultValueProperties.Contains(a) ||     // add Computed and DefaultValues
-                                                                   !tableInfo.PropertyColumnNamesDict.ContainsKey(a))); // remove others since already have same have (could be omited)
-                foreach (var outputPropertyName in propertiesToLoad)
-                {
-                    var propertyValue = FastPropertyDict[outputPropertyName].Get(entitiesWithOutputIdentity.ElementAt(i));
-                    FastPropertyDict[outputPropertyName].Set(entities.ElementAt(i)!, propertyValue);
-                }
-            }
-        }
-        else // Clears entityList and then refills it with loaded entites from Db
-        {
-            ((List<T>)entities).Clear();
-
-            if (typeof(T) == entitiesWithOutputIdentity.FirstOrDefault()?.GetType())
-            {
-                ((List<T>)entities).AddRange(entitiesWithOutputIdentity.Cast<T>().ToList());
-            }
-            else
-            {
-                var entitiesObjects = entities.Cast<object>().ToList();
-                entitiesObjects.AddRange(entitiesWithOutputIdentity);
-            }
-        }
+        // SetOutputIdentity and PreserveInsertOrder functionality removed - this method now does nothing
     }
 
     // Compiled queries created manually to avoid EF Memory leak bug when using EF with dynamic SQL:
@@ -1223,20 +1021,7 @@ public class TableInfo
     /// <returns></returns>
     public async Task LoadOutputDataAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, bool isAsync, CancellationToken cancellationToken) where T : class
     {
-        bool hasIdentity = OutputPropertyColumnNamesDict.Any(a => a.Value == IdentityColumnName) ||
-                           (tableInfo.HasSinglePrimaryKey && tableInfo.DefaultValueProperties.Contains(tableInfo.PrimaryKeysPropertyColumnNameDict.FirstOrDefault().Key));
-        int totalNumber = entities.Count();
-        if (BulkConfig.SetOutputIdentity && (hasIdentity || tableInfo.TimeStampColumnName == null))
-        {
-            string sqlQuery = SqlAdaptersMapping.GetQueryBuilder(context).SelectFromOutputTable(this);
-            //var entitiesWithOutputIdentity = await QueryOutputTableAsync<T>(context, sqlQuery).ToListAsync(cancellationToken).ConfigureAwait(false); // TempFIX
-            var entitiesWithOutputIdentity = QueryOutputTable(context, type, sqlQuery).Cast<object>().ToList();
-            //var entitiesWithOutputIdentity = (typeof(T) == type) ? QueryOutputTable<object>(context, sqlQuery).ToList() : QueryOutputTable(context, type, sqlQuery).Cast<object>().ToList();
-
-            //var entitiesObjects = entities.Cast<object>().ToList();
-            UpdateEntitiesIdentity(context, tableInfo, entities, entitiesWithOutputIdentity);
-            totalNumber = entitiesWithOutputIdentity.Count;
-        }
+        // SetOutputIdentity functionality removed - only calculate stats if needed
         if (BulkConfig.CalculateStats)
         {
             int[] statsNumbers;
@@ -1266,7 +1051,7 @@ public class TableInfo
     /// <returns></returns>
     protected IEnumerable QueryOutputTable(DbContext context, Type type, string sqlQuery)
     {
-        bool doSelect = BulkConfig.SetOutputIdentity && BulkConfig.SetOutputNonIdentityColumns == false && IdentityColumnName != null;
+        bool doSelect = false; // SetOutputIdentity and SetOutputNonIdentityColumns functionality removed
 
         var compiled = EF.CompileQuery(GetQueryExpression(type, sqlQuery, true, doSelect));
         var result = compiled(context);
