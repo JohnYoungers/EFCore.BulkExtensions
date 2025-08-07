@@ -544,7 +544,29 @@ public class TableInfo
                         FastPropertyDict.Add(prefix + property!.Name, FastProperty.GetOrCreate(property));
 
                         // If the OwnedType is mapped to the separate table, don't try merge it into its owner
-                        if (OwnedTypeUtil.IsOwnedInSameTableAsOwner(navigationProperty) == false)
+                        var ownership = navigationProperty.TargetEntityType.FindOwnership();
+                        bool isOwnedInSameTable = true;
+                        if (ownership != null)
+                        {
+                            var owner = ownership.PrincipalEntityType;
+                            var ownedTables = navigationProperty.TargetEntityType.GetTableMappings();
+
+                            foreach (var ot in ownedTables)
+                            {
+                                var isSharingTable = ot.Table.EntityTypeMappings.Any(y => y.TypeBase == owner);
+                                if (isSharingTable == false)
+                                {
+                                    isOwnedInSameTable = false;
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            isOwnedInSameTable = false;
+                        }
+
+                        if (isOwnedInSameTable == false)
                             return;
 
                         prefix += $"{property.Name}_";

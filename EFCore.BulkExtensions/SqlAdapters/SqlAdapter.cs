@@ -156,7 +156,8 @@ public class SqlAdapter
                 entitiesCopiedCount++;
                 if (progress != null && entitiesCopiedCount % tableInfo.BulkConfig.NotifyAfter == 0)
                 {
-                    progress?.Invoke(ProgressHelper.GetProgress(entities.Count(), entitiesCopiedCount));
+                    var progressValue = (decimal)(Math.Floor(entitiesCopiedCount * 10000D / entities.Count()) / 10000);
+                    progress?.Invoke(progressValue);
                 }
             }
             if (isAsync)
@@ -214,7 +215,8 @@ public class SqlAdapter
 
         object? propertyValue = entity;
         string fullPropertyName = string.Empty;
-        foreach (var entry in propertyName.AsSpan().Split("."))
+        var propertyParts = propertyName.Split('.');
+        foreach (var part in propertyParts)
         {
             if (propertyValue == null)
             {
@@ -223,11 +225,11 @@ public class SqlAdapter
 
             if (fullPropertyName.Length > 0)
             {
-                fullPropertyName += $"_{entry.Token}";
+                fullPropertyName += $"_{part}";
             }
             else
             {
-                fullPropertyName = new string(entry.Token);
+                fullPropertyName = part;
             }
 
             propertyValue = tableInfo.FastPropertyDict[fullPropertyName].Get(propertyValue);
