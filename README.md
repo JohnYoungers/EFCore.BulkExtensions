@@ -6,7 +6,7 @@ EntityFrameworkCore extensions that offer enterprise-grade performance boost - i
 Library is Lightweight and very Efficient (warp speed), having all mostly used [CRUD](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) operation.  
 Was selected in top 20 [EF Core Extensions](https://docs.microsoft.com/en-us/ef/core/extensions/) recommended by Microsoft.  
 Latest version is using EF Core 9.  
-Supports all 5 major sql databases: **SQLServer, PostgreSQL, MySQL, Oracle, SQLite.**  
+Supports **PostgreSQL** database provider.  
 Check out [Testimonials](https://docs.google.com/spreadsheets/d/e/2PACX-1vShdv2sTm3oQfowm9kVIx-PLBCk1lGQEa9E6n92-dX3pni7-XQUEp6taVcMSZVi9BaSAizv1YanWTy3/pubhtml?gid=801420190&single=true) from the Community and User Comments.  
 With thousands of pleased Users and many satisfied Clients from around the globe.  
 Customers include mid-sized businesses and large corporations,  
@@ -44,27 +44,17 @@ When opening issues do write detailed explanation of the problem or feature with
 Want to **Contact** for Development & Consulting: [www.codis.tech](http://www.codis.tech) (*Quality Delivery*).  
 
 ## Description
-Supported databases:  
--**SQLServer** (or AzureSQL) under the hood uses [SqlBulkCopy](https://msdn.microsoft.com/en-us/library/system.data.sqlclient.sqlbulkcopy.aspx) for Insert, Update/Delete = BulkInsert + raw Sql [MERGE](https://docs.microsoft.com/en-us/sql/t-sql/statements/merge-transact-sql).  
+Supported database:  
 -**PostgreSQL** (9.5+) is using [COPY BINARY](https://www.postgresql.org/docs/9.2/sql-copy.html) combined with [ON CONFLICT](https://www.postgresql.org/docs/10/sql-insert.html#SQL-ON-CONFLICT) for Update.  
--**MySQL** (8+) is using [MySqlBulkCopy](https://mysqlconnector.net/api/mysqlconnector/mysqlbulkcopytype/) combined with [ON DUPLICATE](https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html) for Update.  
--**Oracle** (8+) is using [OracleBulkCopy](https://docs.oracle.com/cd/E11882_01/win.112/e23174/OracleBulkCopyClass.htm#ODPNT7446) combined with [MERGE](https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/MERGE.html) for Update.  
--**SQLite** has no Copy tool, instead library uses [plain SQL](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/bulk-insert) combined with [UPSERT](https://www.sqlite.org/lang_UPSERT.html).  
 Bulk Tests can not have UseInMemoryDb because InMemoryProvider does not support Relational-specific methods.  
-Instead Test options are  SqlServer(Developer or Express), LocalDb(if alongside [Developer v.](https://stackoverflow.com/questions/42885377/sql-server-2016-developer-version-can-not-connect-to-localdb-mssqllocaldb?noredirect=1&lq=1)), or with  other adapters.
+Instead Test options use PostgreSQL database.
 
 ## Installation
 Available on [![NuGet](https://img.shields.io/nuget/v/EFCore.BulkExtensions.svg)](https://www.nuget.org/packages/EFCore.BulkExtensions/)  [![Downloads](https://img.shields.io/nuget/dt/EFCore.BulkExtensions.svg)](https://www.nuget.org/packages/EFCore.BulkExtensions/)  
 Package manager console command to install: *Install-Package EFCore.BulkExtensions*  
-Main nuget is for all Databases, and specific ones with single provider for those who need small size packages.  
-Specific ones have adapter suffix: MainNuget + *.SqlServer/PostgreSql/MySql/Oracle/Sqlite* 
-(
-[![](https://img.shields.io/static/v1?label=&message=MS&color=darkred)](https://www.nuget.org/packages/EFCore.BulkExtensions.SqlServer)
-[![](https://img.shields.io/static/v1?label=&message=PG&color=blue)](https://www.nuget.org/packages/EFCore.BulkExtensions.PostgreSql)
-[![](https://img.shields.io/static/v1?label=&message=MY&color=chocolate)](https://www.nuget.org/packages/EFCore.BulkExtensions.MySql)
-[![](https://img.shields.io/static/v1?label=&message=OR&color=red)](https://www.nuget.org/packages/EFCore.BulkExtensions.Oracle)
-[![](https://img.shields.io/static/v1?label=&message=LT&color=lightgreen)](https://www.nuget.org/packages/EFCore.BulkExtensions.Sqlite)
-)  
+Main nuget is for PostgreSQL database.  
+Package manager console command to install: *Install-Package EFCore.BulkExtensions*  
+
 Its assembly is [Strong-Named](https://docs.microsoft.com/en-us/dotnet/standard/library-guidance/strong-naming) and [Signed](https://github.com/borisdj/EFCore.BulkExtensions/issues/161) with a key.
 | Nuget | Target          | Used EF v.| For projects targeting          |
 | ----- | --------------- | --------- | ------------------------------- |
@@ -93,13 +83,9 @@ context.BulkRead(entities);                   context.BulkReadAsync(entities);
 context.BulkSaveChanges();                    context.BulkSaveChangesAsync();
 ```
 
-**-MySQL** when running its Test for the first time execute sql command ([local-data](https://stackoverflow.com/questions/59993844/error-loading-local-data-is-disabled-this-must-be-enabled-on-both-the-client)): `SET GLOBAL local_infile = true;`  
-**-SQLite** requires package: [*SQLitePCLRaw.bundle_e_sqlite3*](https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/custom-versions?tabs=netcore-cli) with call to `SQLitePCL.Batteries.Init()`  
-
 **Batch** Extensions are made on *IQueryable* DbSet and can be used as in the following code segment.  
 They are done as pure sql and no check is done whether some are prior loaded in memory and are being Tracked.  
-(*updateColumns* is optional param in which PropertyNames added explicitly when need update to it's default value).  
-Info about [lock-escalation](https://docs.microsoft.com/en-us/troubleshoot/sql/performance/resolve-blocking-problems-caused-lock-escalation) in SQL Server with Batch iteration example as a solution at the bottom of code segment.
+(*updateColumns* is optional param in which PropertyNames added explicitly when need update to it's default value).
 ```C#
 // Delete
 context.Items.Where(a => a.ItemId >  500).BatchDelete();
@@ -171,7 +157,7 @@ It makes Update when PK(PrimaryKey) is matched, otherwise does Insert.
 Those in Db that are not found in the list will be deleted.  
 Partial Sync can be done on table subset using expression set on config with method:  
 `bulkConfig.SetSynchronizeFilter<Item>(a => a.Quantity > 0);`  
-Not supported for SQLite (Lite has only UPSERT statement) nor currently for PostgreSQL. Here way to achieve sync functionality is to Select or BulkRead existing data from DB, split list into sublists and call separately Bulk methods for BulkInsertOrUpdate and Delete.
+PostgreSQL supports BulkInsertOrUpdate but not currently BulkInsertOrUpdateOrDelete. Here way to achieve sync functionality is to Select or BulkRead existing data from DB, split list into sublists and call separately Bulk methods for BulkInsertOrUpdate and Delete.
 
 **BulkRead** (SELECT and JOIN done in Sql)  
 Used when need to Select from big List based on Unique Prop./Columns specified in config `UpdateByProperties`  

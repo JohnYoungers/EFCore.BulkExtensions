@@ -40,70 +40,20 @@ public static class BatchUtil
     {
         var (sql, tableAlias, _, topStatement, leadingComments, innerParameters) = GetBatchSql(query, context, isUpdate: false);
 
-        innerParameters = ReloadSqlParameters(context, innerParameters.ToList()); // Sqlite requires SqliteParameters
+        innerParameters = ReloadSqlParameters(context, innerParameters.ToList()); // PostgreSQL parameters
         var databaseType = SqlAdaptersMapping.GetDatabaseType(context);
 
-        string resultQuery;
-        if (databaseType == SqlType.SqlServer)
+        // PostgreSQL-only implementation
+        string resultQuery = $"{leadingComments}DELETE {topStatement}{tableAlias}{sql}";
+
+        resultQuery = SqlAdaptersMapping.DbServer(context).QueryBuilder.RestructureForBatch(resultQuery, isDelete: true);
+
+        var npgsqlParameters = new List<DbParameter>();
+        foreach (var param in innerParameters)
         {
-            tableAlias = $"[{tableAlias}]";
-            int outerQueryOrderByIndex = -1;
-            var useUpdateableCte = false;
-            var lastOrderByIndex = sql.LastIndexOf(Environment.NewLine + $"ORDER BY ", StringComparison.OrdinalIgnoreCase);
-            if (lastOrderByIndex > -1)
-            {
-                var subQueryEnd = sql.LastIndexOf($") AS {tableAlias}" + Environment.NewLine, StringComparison.OrdinalIgnoreCase);
-                if (subQueryEnd == -1 || lastOrderByIndex > subQueryEnd)
-                {
-                    outerQueryOrderByIndex = lastOrderByIndex;
-
-                    if (topStatement.Length > 0)
-                    {
-                        useUpdateableCte = true;
-                    }
-                    else
-                    {
-                        int offSetIndex = sql.LastIndexOf(Environment.NewLine + "OFFSET ", StringComparison.OrdinalIgnoreCase);
-                        if (offSetIndex > outerQueryOrderByIndex)
-                        {
-                            useUpdateableCte = true;
-                        }
-                    }
-                }
-            }
-
-            if (useUpdateableCte)
-            {
-                var cte = string.Concat("cte", Guid.NewGuid().ToString().AsSpan(0, 8)); // 8 chars of Guid as tableNameSuffix to avoid same name collision with other tables
-                resultQuery = $"{leadingComments}WITH [{cte}] AS (SELECT {topStatement}* {sql}) DELETE FROM [{cte}]";
-            }
-            else
-            {
-                if (outerQueryOrderByIndex > -1)
-                {
-                    // ORDER BY is not allowed without TOP or OFFSET.
-                    sql = sql[..outerQueryOrderByIndex];
-                }
-
-                resultQuery = $"{leadingComments}DELETE {topStatement}{tableAlias}{sql}";
-            }
+            npgsqlParameters.Add(SqlAdaptersMapping.DbServer(context).QueryBuilder.CreateParameter(param.ParameterName, param.Value));
         }
-        else
-        {
-            resultQuery = $"{leadingComments}DELETE {topStatement}{tableAlias}{sql}";
-        }
-
-        if (databaseType == SqlType.PostgreSql)
-        {
-            resultQuery = SqlAdaptersMapping.DbServer(context).QueryBuilder.RestructureForBatch(resultQuery, isDelete: true);
-
-            var npgsqlParameters = new List<DbParameter>();
-            foreach (var param in innerParameters)
-            {
-                npgsqlParameters.Add(SqlAdaptersMapping.DbServer(context).QueryBuilder.CreateParameter(param.ParameterName, param.Value));
-            }
-            innerParameters = npgsqlParameters;
-        }
+        innerParameters = npgsqlParameters;
 
         return (resultQuery, new List<DbParameter>(innerParameters));
     }
@@ -154,10 +104,8 @@ public static class BatchUtil
 
         CreateUpdateBody(context, createUpdateBodyData, expression.Body);
 
-        var sqlParameters = ReloadSqlParameters(context, createUpdateBodyData.SqlParameters); // Sqlite requires SqliteParameters
-        var sqlColumns = (createUpdateBodyData.DatabaseType == SqlType.SqlServer) 
-            ? createUpdateBodyData.UpdateColumnsSql
-            : createUpdateBodyData.UpdateColumnsSql.Replace($"[{tableAlias}].", "");
+        var sqlParameters = ReloadSqlParameters(context, createUpdateBodyData.SqlParameters); // PostgreSQL parameters
+        var sqlColumns = createUpdateBodyData.UpdateColumnsSql.Replace($"[{tableAlias}].", "");
 
         string sqlSET = $"SET {sqlColumns}";
 
@@ -198,69 +146,25 @@ public static class BatchUtil
         }
 
         var databaseType = server.Type;
-        if (databaseType == SqlType.PostgreSql)
+        // PostgreSQL-only implementation
+        resultQuery = server.QueryBuilder.RestructureForBatch(resultQuery);
+
+        var npgsqlParameters = new List<DbParameter>();
+        foreach (var param in sqlParameters)
         {
-            resultQuery = server.QueryBuilder.RestructureForBatch(resultQuery);
+            dynamic npgsqlParam = server.QueryBuilder.CreateParameter(param.ParameterName, param.Value);
 
-            var npgsqlParameters = new List<DbParameter>();
-            foreach (var param in sqlParameters)
+            string paramName = npgsqlParam.ParameterName.Replace("@", "");
+            var propertyType = type.GetProperties().SingleOrDefault(a => a.Name == paramName)?.PropertyType;
+            if (propertyType == typeof(System.Text.Json.JsonElement) || propertyType == typeof(System.Text.Json.JsonElement?)) // for JsonDocument works without fix
             {
-                dynamic npgsqlParam = server.QueryBuilder.CreateParameter(param.ParameterName, param.Value);
-
-                string paramName = npgsqlParam.ParameterName.Replace("@", "");
-                var propertyType = type.GetProperties().SingleOrDefault(a => a.Name == paramName)?.PropertyType;
-                if (propertyType == typeof(System.Text.Json.JsonElement) || propertyType == typeof(System.Text.Json.JsonElement?)) // for JsonDocument works without fix
-                {
-                    var dbtypeJsonb = server.QueryBuilder.Dbtype();
-                    server.QueryBuilder.SetDbTypeParam(npgsqlParam, dbtypeJsonb);
-                }
-
-                npgsqlParameters.Add(npgsqlParam);
+                var dbtypeJsonb = server.QueryBuilder.Dbtype();
+                server.QueryBuilder.SetDbTypeParam(npgsqlParam, dbtypeJsonb);
             }
-            sqlParameters = npgsqlParameters;
+
+            npgsqlParameters.Add(npgsqlParam);
         }
-        else if (databaseType == SqlType.MySql)
-        {
-            resultQuery = server.QueryBuilder.RestructureForBatch(resultQuery);
-
-            var mysqlParameters = new List<DbParameter>();
-            foreach (var param in sqlParameters)
-            {
-                dynamic mysqlParam = server.QueryBuilder.CreateParameter(param.ParameterName, param.Value);
-
-                string paramName = mysqlParam.ParameterName.Replace("@", "");
-                var propertyType = type.GetProperties().SingleOrDefault(a => a.Name == paramName)?.PropertyType;
-                if (propertyType == typeof(System.Text.Json.JsonElement) || propertyType == typeof(System.Text.Json.JsonElement?)) // for JsonDocument works without fix
-                {
-                    var dbtypeJsonb = server.QueryBuilder.Dbtype();
-                    server.QueryBuilder.SetDbTypeParam(mysqlParam, dbtypeJsonb);
-                }
-
-                mysqlParameters.Add(mysqlParam);
-            }
-            sqlParameters = mysqlParameters;
-        }
-        else if (databaseType == SqlType.Oracle)
-        {
-            resultQuery = server.QueryBuilder.RestructureForBatch(resultQuery);
-
-            var mysqlParameters = new List<DbParameter>();
-            foreach (var param in sqlParameters)
-            {
-                dynamic mysqlParam = server.QueryBuilder.CreateParameter(param.ParameterName, param.Value);
-
-                string paramName = mysqlParam.ParameterName.Replace(":", "");
-                var propertyType = type.GetProperties().SingleOrDefault(a => a.Name == paramName)?.PropertyType;
-                if (propertyType == typeof(System.Text.Json.JsonElement) || propertyType == typeof(System.Text.Json.JsonElement?)) // for JsonDocument works without fix
-                {
-                    var dbtypeJsonb = server.QueryBuilder.Dbtype();
-                    server.QueryBuilder.SetDbTypeParam(mysqlParam, dbtypeJsonb);
-                }
-
-                mysqlParameters.Add(mysqlParam);
-            }
-            sqlParameters = mysqlParameters;
-        }
+        sqlParameters = npgsqlParameters;
 
         return (resultQuery, sqlParameters);
     }
