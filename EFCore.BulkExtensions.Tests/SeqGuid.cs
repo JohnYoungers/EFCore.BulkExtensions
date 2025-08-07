@@ -12,13 +12,13 @@ public static class SeqGuid
 
     private static readonly ICombProvider PGCombs = new PostgreSqlCombProvider(new UnixDateTimeStrategy(), new UtcNoRepeatTimestampProvider().GetTimestamp);
 
-    public static Guid Create(SqlType sqlType = SqlType.SqlServer)
+    public static Guid Create(SqlType sqlType = SqlType.PostgreSql)
     {
-        if(sqlType == SqlType.SqlServer)
+        if(sqlType == SqlType.PostgreSql)
             return SqlNoRepeatCombs.Create();
         else if (sqlType == SqlType.PostgreSql)
             return PGCombs.Create();
-        else //if (sqlType == SqlType.MySql || sqlType == SqlType.Sqlite)
+        else //if (sqlType == SqlType.PostgreSql || sqlType == SqlType.PostgreSql)
             return UnixCombs.Create();
     }
 }

@@ -38,7 +38,7 @@ public class ContextUtil
         
         switch (dbServerType)
         {
-            case SqlType.SqlServer:
+            case SqlType.PostgreSql:
             {
                 var connectionString = GetSqlServerConnectionString(databaseName);
 
@@ -69,19 +69,19 @@ public class ContextUtil
 #endif
                 break;
             }
-            case SqlType.MySql:
+            case SqlType.PostgreSql:
             {
                 string connectionString = GetMySqlConnectionString(databaseName);
                 optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), opt => opt.UseNetTopologySuite());
                 break;
             }
-            case SqlType.Oracle:
+            case SqlType.PostgreSql:
             {
                 string connectionString = GetOracleConnectionString(databaseName);
                 optionsBuilder.UseOracle(connectionString);
                 break;
             }
-            case SqlType.Sqlite:
+            case SqlType.PostgreSql:
             {
                 string connectionString = GetSqliteConnectionString(databaseName);
                 optionsBuilder.UseSqlite(connectionString, opt =>

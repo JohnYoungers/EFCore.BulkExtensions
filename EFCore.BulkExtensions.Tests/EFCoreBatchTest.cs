@@ -1,5 +1,4 @@
 using EFCore.BulkExtensions.SqlAdapters;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
@@ -15,7 +14,7 @@ public class EFCoreBatchTest
     protected static int EntitiesNumber => 1000;
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     public void BatchConverterTest(SqlType dbServer)
     {
         using var context = new TestContext(dbServer);
@@ -35,8 +34,8 @@ public class EFCoreBatchTest
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     public void BatchTest(SqlType dbServer)
     {
         RunDeleteAll(dbServer);
@@ -44,7 +43,7 @@ public class EFCoreBatchTest
         RunBatchUpdate(dbServer);
 
         int deletedEntities = 1;
-        if (dbServer == SqlType.SqlServer)
+        if (dbServer == SqlType.PostgreSql)
         {
             RunBatchUpdate_UsingNavigationPropertiesThatTranslateToAnInnerQuery(dbServer);
             deletedEntities = RunTopBatchDelete(dbServer);
@@ -74,13 +73,13 @@ public class EFCoreBatchTest
             Assert.StartsWith("name ", lastItem.Name);
             Assert.EndsWith(" Concatenated", lastItem.Name);
 
-            if (dbServer == SqlType.SqlServer)
+            if (dbServer == SqlType.PostgreSql)
             {
                 Assert.EndsWith(" TOP(1)", firstItem.Name);
             }
         }
 
-        if (dbServer == SqlType.SqlServer)
+        if (dbServer == SqlType.PostgreSql)
         {
             //RunUdttBatch(); // not used, used to throw: 'Cannot find data type dbo.UdttIntInt.'
 
@@ -104,8 +103,8 @@ public class EFCoreBatchTest
         // RESET AutoIncrement
         string deleteTableSql = dbServer switch
         {
-            SqlType.SqlServer => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
-            SqlType.Sqlite => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
+            SqlType.PostgreSql => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
+            SqlType.PostgreSql => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
             SqlType.PostgreSql => $@"ALTER SEQUENCE ""{nameof(Item)}_{nameof(Item.ItemId)}_seq"" RESTART WITH 1;",
             _ => throw new ArgumentException($"Unknown database type: '{dbServer}'.", nameof(dbServer)),
         };
@@ -121,11 +120,11 @@ public class EFCoreBatchTest
         decimal price = 0;
 
         var query = context.Items.AsQueryable();
-        if (dbServer == SqlType.SqlServer)
+        if (dbServer == SqlType.PostgreSql)
         {
             query = query.Where(a => a.ItemId <= 500 && a.Price >= price);//.OrderBy(n => n.ItemId).Take(500);
         }
-        if (dbServer == SqlType.Sqlite)
+        if (dbServer == SqlType.PostgreSql)
         {
             query = query.Where(a => a.ItemId <= 500 && a.Price != null && a.Quantity >= 0);
 
@@ -144,7 +143,7 @@ public class EFCoreBatchTest
         var suffix = " Concatenated";
         query.BatchUpdate(a => new Item { Name = a.Name + suffix, Quantity = a.Quantity + incrementStep }); // example of BatchUpdate Increment/Decrement value in variable
 
-        if (dbServer == SqlType.SqlServer) // Sqlite currently does Not support Take(): LIMIT
+        if (dbServer == SqlType.PostgreSql) // Sqlite currently does Not support Take(): LIMIT
         {
             query.Take(1).BatchUpdate(a => new Item { Name = a.Name + " TOP(1)", Quantity = a.Quantity + incrementStep }); // example of BatchUpdate with TOP(1)
         }

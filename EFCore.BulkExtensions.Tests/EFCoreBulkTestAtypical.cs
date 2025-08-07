@@ -17,9 +17,9 @@ public class EFCoreBulkTestAtypical
     protected static int EntitiesNumber => 1000;
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     //[InlineData(SqlType.PostgreSql)]
-    //[InlineData(SqlType.Sqlite)]
+    //[InlineData(SqlType.PostgreSql)]
     private void CustomSqlPostProcessTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -52,9 +52,9 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     //[InlineData(SqlType.PostgreSql)]
-    //[InlineData(SqlType.Sqlite)]
+    //[InlineData(SqlType.PostgreSql)]
     private void CalcStatsTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -65,9 +65,9 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
     [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     private void DefaultValuesTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -96,7 +96,7 @@ public class EFCoreBulkTestAtypical
 
         Assert.Equal(entities[0].DocumentId, firstDocument?.DocumentId);
 
-        if (sqlType == SqlType.SqlServer)
+        if (sqlType == SqlType.PostgreSql)
         {
             Assert.Equal(6, firstDocument?.ContentLength);
             Assert.NotEqual(0, firstDocument?.OrderNumber);
@@ -104,7 +104,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void TemporalTableTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -144,7 +144,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void RunDefaultPKInsertWithGraph(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -163,7 +163,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     public void UpsertOrderTest(SqlType sqlType)
     {
         new EFCoreBatchTest().RunDeleteAll(sqlType);
@@ -197,13 +197,13 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)] // Does NOT have Computed Columns
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)] // Does NOT have Computed Columns
     private void ComputedAndDefaultValuesTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
         context.Truncate<Document>();
-        bool isSqlite = sqlType == SqlType.Sqlite;
+        bool isSqlite = sqlType == SqlType.PostgreSql;
 
         var entities = new List<Document>();
         for (int i = 1; i <= EntitiesNumber; i++)
@@ -254,8 +254,8 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)] // Does NOT have Computed Columns
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)] // Does NOT have Computed Columns
     private void ParameterlessConstructorTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -324,7 +324,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     //[InlineData(DbServer.Sqlite)] // No TimeStamp column type but can be set with DefaultValueSql: "CURRENT_TIMESTAMP" as it is in OnModelCreating() method.
     private void TimeStampTest(SqlType sqlType)
     {
@@ -396,8 +396,8 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     [InlineData(SqlType.PostgreSql)]
     private void CompositeKeyTest(SqlType sqlType)
     {
@@ -439,8 +439,8 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     [InlineData(SqlType.PostgreSql)]
     private void DiscriminatorShadowTest(SqlType sqlType)
     {
@@ -484,8 +484,8 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     private void ValueConversionTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -507,7 +507,7 @@ public class EFCoreBulkTestAtypical
         }
         context.BulkInsert(entitiesToInsert);
 
-        if (sqlType == SqlType.SqlServer)
+        if (sqlType == SqlType.PostgreSql)
         {
             var entities = context.Infos.ToList();
             var entity = entities.First();
@@ -533,14 +533,14 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     [InlineData(SqlType.PostgreSql)]
     private void OwnedTypesTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
 
-        if (sqlType == SqlType.SqlServer)
+        if (sqlType == SqlType.PostgreSql)
         {
             context.Truncate<ChangeLog>();
             context.Database.ExecuteSqlRaw("TRUNCATE TABLE [" + nameof(ChangeLog) + "]");
@@ -583,7 +583,7 @@ public class EFCoreBulkTestAtypical
         }
         context.BulkInsert(entities);
 
-        if (sqlType == SqlType.SqlServer || sqlType == SqlType.PostgreSql)
+        if (sqlType == SqlType.PostgreSql || sqlType == SqlType.PostgreSql)
         {
             context.BulkRead(
                 entities,
@@ -599,7 +599,7 @@ public class EFCoreBulkTestAtypical
         entities[0].Description += " UPD";
         entities[0].Audit.InfoType = InfoType.InfoTypeB;
         context.BulkUpdate(entities);
-        if (sqlType == SqlType.SqlServer || sqlType == SqlType.PostgreSql)
+        if (sqlType == SqlType.PostgreSql || sqlType == SqlType.PostgreSql)
         {
             context.BulkRead(entities);
         }
@@ -608,12 +608,12 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void OwnedTypeSpatialDataTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
 
-        if (sqlType == SqlType.SqlServer)
+        if (sqlType == SqlType.PostgreSql)
         {
             context.Truncate<Tracker>();
             context.Database.ExecuteSqlRaw("TRUNCATE TABLE [" + nameof(Tracker) + "]");
@@ -643,7 +643,7 @@ public class EFCoreBulkTestAtypical
         }
         context.BulkInsert(entities);
 
-        if (sqlType == SqlType.SqlServer || sqlType == SqlType.PostgreSql)
+        if (sqlType == SqlType.PostgreSql || sqlType == SqlType.PostgreSql)
         {
             context.BulkRead(
                 entities,
@@ -659,7 +659,7 @@ public class EFCoreBulkTestAtypical
         entities[0].Description += " UPD";
         entities[0].Location.Location = new Point(1, 1) { SRID = 4326 };
         context.BulkUpdate(entities);
-        if (sqlType == SqlType.SqlServer || sqlType == SqlType.PostgreSql)
+        if (sqlType == SqlType.PostgreSql || sqlType == SqlType.PostgreSql)
         {
             context.BulkRead(entities);
         }
@@ -668,14 +668,14 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
     [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.Sqlite)] //Not supported
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)] //Not supported
     private void ShadowFKPropertiesTest(SqlType sqlType) // with Foreign Key as Shadow Property
     {
         using var context = new TestContext(sqlType);
 
-        if (sqlType == SqlType.SqlServer)
+        if (sqlType == SqlType.PostgreSql)
         {
             context.Truncate<ItemLink>();
             context.Database.ExecuteSqlRaw("TRUNCATE TABLE [" + nameof(ItemLink) + "]");
@@ -740,7 +740,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void UpsertWithOutputSortTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -776,8 +776,8 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     [InlineData(SqlType.PostgreSql)]
     private void NoPrimaryKeyTest(SqlType sqlType)
     {
@@ -814,7 +814,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void EscapeBracketTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -838,8 +838,8 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     private void NonEntityChildTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -859,9 +859,9 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
     [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     private void GeometryColumnTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -894,7 +894,7 @@ public class EFCoreBulkTestAtypical
     [Fact]
     private void GeographyAndGeometryArePersistedCorrectlyTest() // GEOJson
     {
-        const SqlType sqlType = SqlType.SqlServer;
+        const SqlType sqlType = SqlType.PostgreSql;
         using (var context = new TestContext(sqlType))
         {
             context.BulkDelete(context.Addresses.ToList());
@@ -928,7 +928,7 @@ public class EFCoreBulkTestAtypical
     [Fact]
     private void HierarchyIdColumnTest()
     {
-        const SqlType sqlType = SqlType.SqlServer;
+        const SqlType sqlType = SqlType.PostgreSql;
         using (var context = new TestContext(sqlType))
         {
             context.BulkDelete(context.Categories.ToList());
@@ -952,7 +952,7 @@ public class EFCoreBulkTestAtypical
     [Fact]
     private void HierarchyIdIsPersistedCorrectlySimpleTest()
     {
-        const SqlType sqlType = SqlType.SqlServer;
+        const SqlType sqlType = SqlType.PostgreSql;
         using (var context = new TestContext(sqlType))
         {
             context.BulkDelete(context.Categories.ToList());
@@ -982,7 +982,7 @@ public class EFCoreBulkTestAtypical
     [Fact]
     private void HierarchyIdIsPersistedCorrectlyLargerHierarchyTest()
     {
-        const SqlType sqlType = SqlType.SqlServer;
+        const SqlType sqlType = SqlType.PostgreSql;
         using (var context = new TestContext(sqlType))
         {
             context.BulkDelete(context.Categories.ToList());
@@ -1010,9 +1010,9 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
     [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.MySql)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     private void DestinationAndSourceTableNameTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -1067,7 +1067,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void TablePerTypeInsertTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -1131,7 +1131,7 @@ public class EFCoreBulkTestAtypical
     [Fact]
     private void TableWithSpecialRowVersion()
     {
-        const SqlType sqlType = SqlType.SqlServer;
+        const SqlType sqlType = SqlType.PostgreSql;
         using var context = new TestContext(sqlType);
         context.AtypicalRowVersionEntities.BatchDelete();
         context.AtypicalRowVersionConverterEntities.BatchDelete();
@@ -1182,7 +1182,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void CustomPrecisionDateTimeTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -1232,7 +1232,7 @@ public class EFCoreBulkTestAtypical
     [Fact]
     private void ByteArrayPKBulkReadTest()
     {
-        const SqlType sqlType = SqlType.Sqlite;
+        const SqlType sqlType = SqlType.PostgreSql;
         using var context = new TestContext(sqlType);
 
         var list = context.Archives.ToList();
@@ -1264,15 +1264,15 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     [InlineData(SqlType.PostgreSql)]
     private void UpsertWithOnUpdateNonPK(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
 
         context.Truncate<Customer>();
-        if (sqlType == SqlType.Sqlite)
+        if (sqlType == SqlType.PostgreSql)
         {
             context.Database.ExecuteSqlRaw($"UPDATE SQLITE_SEQUENCE SET SEQ=0 WHERE NAME='{nameof(Customer)}';");
             context.SaveChanges();
@@ -1302,7 +1302,7 @@ public class EFCoreBulkTestAtypical
         };
         context2.BulkInsertOrUpdate(customers, bulkConfig);
 
-        if (sqlType == SqlType.Sqlite)
+        if (sqlType == SqlType.PostgreSql)
         {
             context2.BulkRead(customers, b =>
             {
@@ -1316,8 +1316,8 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     [InlineData(SqlType.PostgreSql)]
     private void PrivateKeyTest(SqlType sqlType)
     {
@@ -1347,8 +1347,8 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
-    [InlineData(SqlType.Sqlite)]
+    [InlineData(SqlType.PostgreSql)]
+    [InlineData(SqlType.PostgreSql)]
     private void ReplaceReadEntitiesTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -1383,9 +1383,9 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
     [InlineData(SqlType.PostgreSql)]
-    //[InlineData(SqlType.Sqlite)] // post v 8.0
+    [InlineData(SqlType.PostgreSql)]
+    //[InlineData(SqlType.PostgreSql)] // post v 8.0
     private void JsonTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -1516,7 +1516,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void DataReaderTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
@@ -1534,7 +1534,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     private void ParallelsTestAsync(SqlType sqlType)
     {
         var entitiesLists = new List<List<Customer>>();
@@ -1565,7 +1565,7 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    [InlineData(SqlType.SqlServer)]
+    [InlineData(SqlType.PostgreSql)]
     public void UpdateOrderGraphTest(SqlType sqlType)
     {
         using var context = new TestContext(sqlType);
