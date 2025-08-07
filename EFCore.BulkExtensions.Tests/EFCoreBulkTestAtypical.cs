@@ -132,24 +132,6 @@ public class EFCoreBulkTestAtypical
     }
 
     [Theory]
-    private void RunDefaultPKInsertWithGraph()
-    {
-        using var context = new TestContext();
-        var department = new Department
-        {
-            Name = "Software",
-            Divisions = new List<Division>
-                {
-                    new Division{Name = "Student A"},
-                    new Division{Name = "Student B"},
-                    new Division{Name = "Student C"},
-                }
-        };
-
-        context.BulkInsert(new List<Department> { department }, new BulkConfig { IncludeGraph = true });
-    }
-
-    [Theory]
     public void UpsertOrderTest()
     {
         new EFCoreBatchTest().RunDeleteAll(sqlType);
@@ -1477,81 +1459,6 @@ public class EFCoreBulkTestAtypical
                 context.BulkInsertAsync(chunk);
             }
         );
-    }
-
-    [Theory]
-    public void UpdateOrderGraphTest()
-    {
-        using var context = new TestContext();
-
-        context.Database.ExecuteSql($"delete from dbo.ParentType;");
-
-        // Add the starting objects to the database
-        List<ParentType> startingItems =
-        [
-            new ParentType
-            {
-                ParentTypeKey = 1,
-                ParentLabel = "ParentLabel_1",
-                Children =
-                [
-                    new ChildType() { ChildTypeKey = 1, ParentTypeKey = 1, ChildLabel = "Child_1_Label" }
-                ]
-            },
-            new ParentType
-            {
-                ParentTypeKey = 2,
-                ParentLabel = "ParentLabel_2",
-                Children =
-                [
-                    new ChildType() { ChildTypeKey = 2, ParentTypeKey = 2, ChildLabel = "Child_2_Label" }
-                ]
-            }
-        ];
-
-        context.ParentTypes.AddRange(startingItems);
-        context.SaveChangesAsync();
-        // Display starting data
-        foreach (var p in context.ParentTypes.Include(p => p.Children).AsNoTracking())
-        {
-            Console.WriteLine(p.ToString());
-            foreach (var c in p.Children) { Console.WriteLine(c.ToString()); }
-        }
-
-        // Issue manifests only if all items of a type have edits
-        // Only change to data from starting items is ParentLabel property edited to "..._Updated" for all ParentItems.
-        // Note - Order of incoming (or edited) items is not ParentTypeKey ASC
-        List<ParentType> editedItems =
-        [
-            new ParentType
-            {
-                ParentTypeKey = 2,
-                ParentLabel = "ParentLabel_2_Updated",
-                Children =
-                [
-                    new ChildType() { ChildTypeKey = 2, ParentTypeKey = 2, ChildLabel = "Child_2_Label" }
-                ]
-            },
-            new ParentType
-            {
-                ParentTypeKey = 1,
-                ParentLabel = "ParentLabel_1_Updated",
-                Children =
-                [
-                    new ChildType() { ChildTypeKey = 1, ParentTypeKey = 1, ChildLabel = "Child_1_Label" }
-                ]
-            }
-        ];
-        context.BulkUpdate<ParentType>(editedItems, new BulkConfig { UseTempDB = true, IncludeGraph = true });
-
-        // Show new results
-        // Notice now the child items foreign key values are incorrect.
-        Console.WriteLine("Results:");
-        foreach (var p in context.ParentTypes.Include(p => p.Children).AsNoTracking())
-        {
-            Console.WriteLine(p.ToString());
-            foreach (var c in p.Children) { Console.WriteLine(c.ToString()); }
-        }
     }
 
     [Fact]

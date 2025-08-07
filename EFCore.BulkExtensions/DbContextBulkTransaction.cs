@@ -26,17 +26,11 @@ internal static class DbContextBulkTransaction
                 return;
             }
 
-            if (bulkConfig?.IncludeGraph == true)
-            {
-                DbContextBulkTransactionGraphUtil.ExecuteWithGraph(context, entities, operationType, bulkConfig, progress);
-                return;
-            }
-
             var tableInfo = TableInfo.CreateInstance(context, type, entities, operationType, bulkConfig);
 
             switch (operationType)
             {
-                case OperationType.Insert when tableInfo.BulkConfig is { SetOutputIdentity: false, CustomSourceTableName: null }:
+                case OperationType.Insert when tableInfo.BulkConfig.CustomSourceTableName == null:
                     SqlBulkOperation.Insert(context, type, entities, tableInfo, progress);
                     break;
 
@@ -71,17 +65,11 @@ internal static class DbContextBulkTransaction
                 return;
             }
 
-            if (bulkConfig?.IncludeGraph == true)
-            {
-                await DbContextBulkTransactionGraphUtil.ExecuteWithGraphAsync(context, entities, operationType, bulkConfig, progress, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
             var tableInfo = TableInfo.CreateInstance(context, type, entities, operationType, bulkConfig);
 
             switch (operationType)
             {
-                case OperationType.Insert when !tableInfo.BulkConfig.SetOutputIdentity:
+                case OperationType.Insert:
                     await SqlBulkOperation.InsertAsync(context, type, entities, tableInfo, progress, cancellationToken).ConfigureAwait(false);
                     break;
 
