@@ -53,7 +53,7 @@ public class TableInfo
     public bool ColumnNameContainsSquareBracket { get; set; }
     public bool LoadOnlyPKColumn { get; set; }
     public bool HasSpatialType { get; set; }
-    public bool HasTemporalColumns { get; set; }
+    public bool HasTemporalColumns { get; set; } = false; // Temporal columns support removed
     public int NumberOfEntities { get; set; }
 
     public BulkConfig BulkConfig { get; set; } = null!;
@@ -233,7 +233,8 @@ public class TableInfo
             var columnName = entityProperty.GetColumnName(ObjectIdentifier);
             bool isTemporalColumn = false; // Temporal columns support removed
 
-            HasTemporalColumns = HasTemporalColumns || isTemporalColumn;
+            // Temporal column detection removed
+            HasTemporalColumns = false;
 
             if (columnName == null || isTemporalColumn)
                 continue;

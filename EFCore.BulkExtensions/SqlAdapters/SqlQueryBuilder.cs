@@ -66,7 +66,7 @@ public abstract class SqlQueryBuilder
     /// <returns></returns>
     public virtual string CreateTableCopy(string existingTableName, string newTableName, TableInfo tableInfo, bool isOutputTable = false)
     {
-        // TODO: (optionaly) if CalculateStats = True but SetOutputIdentity = False then Columns could be ommited from Create and from MergeOutput
+        // TODO: (optionaly) if CalculateStats = True then Columns could be omitted from Create and from MergeOutput
         List<string> columnsNames = (isOutputTable ? tableInfo.OutputPropertyColumnNamesDict
                                                    : tableInfo.PropertyColumnNamesDict
                                                    ).Values.ToList();
@@ -78,10 +78,6 @@ public abstract class SqlQueryBuilder
         }
         string temporalTableColumns = "";
         // Temporal columns support removed
-        if (false && tableInfo.HasTemporalColumns && isOutputTable == true)
-        {
-            // Temporal columns functionality removed
-        }
 
         string statsColumn = (tableInfo.BulkConfig.CalculateStats && isOutputTable) ? $", [{tableInfo.SqlActionIUD}] = CAST('' AS char(1))" : "";
 
@@ -323,10 +319,6 @@ public abstract class SqlQueryBuilder
             isUpdateStatsValue = ",SUBSTRING($action, 1, 1)";
 
         // PreserveInsertOrder functionality removed
-        if (false)
-        {
-            // Order preservation logic removed
-        }
 
         string textWITH_HOLDLOCK = tableInfo.BulkConfig.WithHoldlock ? " WITH (HOLDLOCK)" : string.Empty;
 
