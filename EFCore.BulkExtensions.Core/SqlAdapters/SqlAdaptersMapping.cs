@@ -5,34 +5,14 @@ using System;
 namespace EFCore.BulkExtensions.SqlAdapters;
 
 /// <summary>
-/// A list of database servers supported by EFCore.BulkExtensions
+/// The database server supported by EFCore.BulkExtensions
 /// </summary>
 public enum SqlType
 {
     /// <summary>
-    /// Indicates database is Microsoft's SQL Server
-    /// </summary>
-    SqlServer,
-
-    /// <summary>
-    /// Indicates database is SQLite
-    /// </summary>
-    Sqlite,
-
-    /// <summary>
     /// Indicates database is PostgreSQL
     /// </summary>
     PostgreSql,
-
-    /// <summary>
-    ///  Indicates database is MySQL
-    /// </summary>
-    MySql,
-
-    /// <summary>
-    ///  Indicates database is Oracle
-    /// </summary>
-    Oracle,
 }
 
 #pragma warning disable CS1591 // No XML comment required here
@@ -54,22 +34,10 @@ public static class SqlAdaptersMapping
 
         ProviderName = name;
 
-        DatabaseType = SqlType.SqlServer;                                       // ProviderName: Microsoft.EntityFrameworkCore.SqlServer
-        if (ProviderName?.EndsWith(SqlType.PostgreSql.ToString(), ignoreCase) ?? false) // ProviderName: Npgsql.EntityFrameworkCore.PostgreSQL
+        DatabaseType = SqlType.PostgreSql;                                       // ProviderName: Npgsql.EntityFrameworkCore.PostgreSQL
+        if (!(ProviderName?.EndsWith(SqlType.PostgreSql.ToString(), ignoreCase) ?? false))
         {
-            DatabaseType = SqlType.PostgreSql;
-        }
-        else if (ProviderName?.EndsWith(SqlType.MySql.ToString(), ignoreCase) ?? false) // ProviderName: Pomelo.EntityFrameworkCore.MySql
-        {
-            DatabaseType = SqlType.MySql;
-        }
-        else if (ProviderName?.EndsWith(SqlType.Sqlite.ToString(), ignoreCase) ?? false) // ProviderName: Microsoft.EntityFrameworkCore.Sqlite
-        {
-            DatabaseType = SqlType.Sqlite;
-        }
-        else if (ProviderName?.Contains(SqlType.Oracle.ToString(), ignoreCase) ?? false) // ProviderName: Microsoft.EntityFrameworkCore.Sqlite
-        {
-            DatabaseType = SqlType.Oracle;
+            throw new NotSupportedException($"Database provider '{ProviderName}' is not supported. Only PostgreSQL is supported.");
         }
     }
 

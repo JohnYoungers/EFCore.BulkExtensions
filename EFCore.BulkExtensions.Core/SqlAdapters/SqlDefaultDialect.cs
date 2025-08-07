@@ -58,11 +58,7 @@ public class SqlDefaultDialect : IQueryBuilderSpecialization
         var isPostgreSql = databaseType == SqlType.PostgreSql;
         var escapeSymbolEnd = isPostgreSql ? "." : "]";
         var escapeSymbolStart = isPostgreSql ? " " : "["; // SqlServer : PostrgeSql;
-        if (databaseType == SqlType.MySql)
-        {
-            escapeSymbolEnd = "`.";
-            escapeSymbolStart = "`";
-        }
+        // Note: PostgreSQL is the only supported database type
         var tableAliasEnd = sqlQuery[SelectStatementLength..sqlQuery.IndexOf(escapeSymbolEnd, StringComparison.Ordinal)]; // " TOP(10) [table_alias" / " [table_alias" : " table_alias"
         var tableAliasStartIndex = tableAliasEnd.IndexOf(escapeSymbolStart, StringComparison.Ordinal);
         var tableAlias = tableAliasEnd[(tableAliasStartIndex + escapeSymbolStart.Length)..]; // "table_alias"

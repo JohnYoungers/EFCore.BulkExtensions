@@ -165,21 +165,17 @@ public class TableInfo
 
         //var relationalData = entityType.Relational(); relationalData.Schema relationalData.TableName // DEPRECATED in Core3.0
         string? providerName = context.Database.ProviderName?.ToLower();
-        bool isSqlServer = providerName?.EndsWith(SqlType.SqlServer.ToString().ToLower()) ?? false;
         bool isNpgsql = providerName?.EndsWith(SqlType.PostgreSql.ToString().ToLower()) ?? false;
-        bool isSqlite = providerName?.EndsWith(SqlType.Sqlite.ToString().ToLower()) ?? false;
-        bool isMySql = providerName?.EndsWith(SqlType.MySql.ToString().ToLower()) ?? false;
-        bool isOracle = providerName?.EndsWith(SqlType.Oracle.ToString().ToLower()) ?? false;
 
         string? defaultSchema = null;
-        if (isSqlServer)
-        {
-            defaultSchema = "dbo";
-        }
-        else if (isNpgsql)
+        if (isNpgsql)
         {
             var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
             defaultSchema = adapter.ReconfigureTableInfo(context, this);
+        }
+        else
+        {
+            throw new NotSupportedException($"Database provider '{context.Database.ProviderName}' is not supported. Only PostgreSQL is supported.");
         }
 
         string? customSchema = null;
@@ -310,7 +306,7 @@ public class TableInfo
 
         HasJsonTypes = OwnedJsonTypesDict.Count > 0;
 
-        if (isSqlServer || isNpgsql || isMySql)
+        // PostgreSQL-only implementation
         {
             var strategyName = SqlAdaptersMapping.DbServer(context).ValueGenerationStrategy;
             if (!strategyName.Contains(":Value"))
@@ -333,18 +329,7 @@ public class TableInfo
                 }
             }
         }
-        if (isSqlite) // SQLite no ValueGenerationStrategy
-        {
-            // for HiLo on SqlServer was returning True when should be False
-            IdentityColumnName = allProperties.SingleOrDefault(a => a.IsPrimaryKey() &&
-                                                    a.ValueGenerated == ValueGenerated.OnAdd && // ValueGenerated equals OnAdd for nonIdentity column like Guid so take only number types
-                                                    (a.ClrType.Name.StartsWith("Byte") ||
-                                                     a.ClrType.Name.StartsWith("SByte") ||
-                                                     a.ClrType.Name.StartsWith("Int") ||
-                                                     a.ClrType.Name.StartsWith("UInt") ||
-                                                     (isSqlServer && a.ClrType.Name.StartsWith("Decimal")))
-                                              )?.GetColumnName(ObjectIdentifier);
-        }
+        // PostgreSQL doesn't need special SQLite handling - remove this block
 
         // timestamp/row version properties are only set by the Db, the property has a [Timestamp] Attribute or is configured in FluentAPI with .IsRowVersion()
         // They can be identified by the columne type "timestamp" or .IsConcurrencyToken in combination with .ValueGenerated == ValueGenerated.OnAddOrUpdate
@@ -946,8 +931,8 @@ public class TableInfo
             string uniqueProperyValues = GetUniquePropertyValues(entity!, selectByPropertyNames, FastPropertyDict);
 
             existingEntitiesDict.TryGetValue(uniqueProperyValues, out T? existingEntity);
-            bool isPostgreSql = context.Database.ProviderName?.EndsWith(SqlType.PostgreSql.ToString(), StringComparison.InvariantCultureIgnoreCase) ?? false;
-            if (existingEntity == null && isPostgreSql && i < existingEntities.Count && entities.Count() == existingEntities.Count) // && entities.Count == existingEntities.Count conf fix for READ. TODO change (issue 1027)
+            // PostgreSQL-specific logic for BinaryImport with COPY preserving order
+            if (existingEntity == null && i < existingEntities.Count && entities.Count() == existingEntities.Count) // && entities.Count == existingEntities.Count conf fix for READ. TODO change (issue 1027)
             {
                 existingEntity = existingEntities.ElementAt(i); // TODO check if BinaryImport with COPY on Postgres preserves order
             }
