@@ -12,7 +12,7 @@ public class ShadowPropertyTests
     [Theory]
     public void BulkInsertOrUpdate_EntityWithShadowProperties_SavesToDatabase()
     {
-        var options = new ContextUtil(dbServer).GetOptions<SpDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_ShadowProperties");
+        var options = new ContextUtil().GetOptions<SpDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_ShadowProperties");
         using var db = new SpDbContext(options);
 
         db.BulkInsertOrUpdate(GetTestData(db, true, 10000).ToList(), new BulkConfig
@@ -30,8 +30,7 @@ public class ShadowPropertyTests
     [Theory]
     public void BulkInsertOrUpdate_EntityWithShadowProperties_GlobalFunc_SavesToDatabase()
     {
-        var options = new ContextUtil(dbServer)
-            .GetOptions<SpDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_ShadowProperties");
+        var options = new ContextUtil().GetOptions<SpDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_ShadowProperties");
         
         using var db = new SpDbContext(options);
 

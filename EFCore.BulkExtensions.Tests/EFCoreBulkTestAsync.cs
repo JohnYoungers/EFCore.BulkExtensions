@@ -20,6 +20,8 @@ public class EFCoreBulkTestAsync
     //private static readonly Func<TestContext, IEnumerable<Item>> AllItemsQuery = EF.CompileQuery<TestContext, IEnumerable<Item>>(ctx => ctx.Items.AsNoTracking());
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     //[InlineData(DatabaseType.SqlServer, false)] // for speed comparison with Regular EF CUD operations
     public async Task OperationsTestAsync(bool isBulk)
     {
@@ -39,7 +41,7 @@ public class EFCoreBulkTestAsync
         //await RunDeleteAsync(isBulk);
     }
 
-    [Theory]
+    [Fact]
     //[InlineData(DbServer.Sqlite)] // has to be run separately as single test, otherwise throws (SQLite Error 1: 'table "#MyTempTable1" already exists'.)
     public async Task SideEffectsTestAsync()
     {

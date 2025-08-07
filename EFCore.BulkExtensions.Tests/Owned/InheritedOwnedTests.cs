@@ -9,10 +9,10 @@ namespace EFCore.BulkExtensions.Tests.Owned;
 
 public class InheritedOwnedTests
 {
-    [Theory]
+    [Fact]
     public async Task InheritedOwnedTest()
     {
-        var options = new ContextUtil(sqlType)
+        var options = new ContextUtil()
             .GetOptions<InheritedDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_NestedOwned");
         using var context = new InheritedDbContext(options);
 

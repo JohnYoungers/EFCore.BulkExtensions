@@ -131,7 +131,7 @@ public class EFCoreBulkTestAtypical
         Assert.Equal(entities[0].Data, entities2[0].Data);
     }
 
-    [Theory]
+    [Fact]
     public void UpsertOrderTest()
     {
         new EFCoreBatchTest().RunDeleteAll();

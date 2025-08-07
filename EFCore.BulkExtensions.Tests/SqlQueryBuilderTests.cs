@@ -300,7 +300,7 @@ public class SqlQueryBuilderUnitTests
         return tableInfo;
     }
 
-    [Theory]
+    [Fact]
     public async Task DelegateDecompiler_DecompileAsync_WorksAsync()
     {
         using var context = new TestContext();

@@ -19,7 +19,7 @@ public class EFCoreBulkTest
     private static readonly Func<TestContext, Item?> LastItemQuery = EF.CompileQuery<TestContext, Item?>(ctx => ctx.Items.LastOrDefault());
     private static readonly Func<TestContext, IEnumerable<Item>> AllItemsQuery = EF.CompileQuery<TestContext, IEnumerable<Item>>(ctx => ctx.Items.AsNoTracking());
 
-    [Theory]
+    [Fact]
     public void InsertEnumStringValue()
     {
         using var context = new TestContext();
@@ -380,6 +380,8 @@ public class EFCoreBulkTest
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     //[InlineData(DbServer.SqlServer, false)] // for speed comparison with Regular EF CUD operations
     public void OperationsTest(bool isBulk)
     {
@@ -400,7 +402,7 @@ public class EFCoreBulkTest
         //CheckQueryCache();
     }
 
-    [Theory]
+    [Fact]
     public void SideEffectsTest()
     {
         BulkOperationShouldNotCloseOpenConnection(context => context.BulkInsert(new[] { new Item() }));
