@@ -165,7 +165,7 @@ public class TableInfo
 
         //var relationalData = entityType.Relational(); relationalData.Schema relationalData.TableName // DEPRECATED in Core3.0
         string? providerName = context.Database.ProviderName?.ToLower();
-        bool isNpgsql = providerName?.EndsWith(SqlType.PostgreSql.ToString().ToLower()) ?? false;
+        bool isNpgsql = providerName?.EndsWith("postgresql") ?? false;
 
         string? defaultSchema = null;
         if (isNpgsql)
@@ -1228,7 +1228,6 @@ public class TableInfo
         int totalNumber = entities.Count();
         if (BulkConfig.SetOutputIdentity && (hasIdentity || tableInfo.TimeStampColumnName == null))
         {
-            var databaseType = SqlAdaptersMapping.GetDatabaseType(context);
             string sqlQuery = SqlAdaptersMapping.GetQueryBuilder(context).SelectFromOutputTable(this);
             //var entitiesWithOutputIdentity = await QueryOutputTableAsync<T>(context, sqlQuery).ToListAsync(cancellationToken).ConfigureAwait(false); // TempFIX
             var entitiesWithOutputIdentity = QueryOutputTable(context, type, sqlQuery).Cast<object>().ToList();

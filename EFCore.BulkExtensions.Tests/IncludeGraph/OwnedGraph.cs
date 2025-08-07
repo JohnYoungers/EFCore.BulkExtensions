@@ -62,7 +62,7 @@ public class OwnedGraph
 {
     //[Theory]
     //[InlineData(DbServer.SQLServer)]
-    public async Task Test(SqlType dbServer)
+    public async Task Test()
     {
         //ARRANGE
         var options = new ContextUtil(dbServer)

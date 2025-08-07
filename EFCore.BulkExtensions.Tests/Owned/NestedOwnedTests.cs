@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
-using EFCore.BulkExtensions.SqlAdapters;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -10,9 +9,7 @@ namespace EFCore.BulkExtensions.Tests.Owned;
 public class NestedOwnedTests
 {
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    public async Task NestedOwnedTest(SqlType sqlType)
+    public async Task NestedOwnedTest()
     {
         var options = new ContextUtil(sqlType)
             .GetOptions<NestedDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_NestedOwned");
@@ -49,7 +46,6 @@ public class NestedOwnedTests
         Assert.Equal("thirdnested", nestedroot.FirstNested.SecondNested.ThirdNested.ThirdNestedProperty);
         Assert.Equal(WallType.Clay, nestedroot.FirstNested.Enum);
         
-        if (sqlType == SqlType.PostgreSql)
             Assert.Equal(Enum.GetValues<WallType>(), nestedroot.FirstNested.EnumArray);
     }
 }

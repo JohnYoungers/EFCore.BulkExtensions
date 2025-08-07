@@ -411,8 +411,7 @@ public abstract class SqlQueryBuilder
                 var querable = context.Set<T>().IgnoreQueryFilters().IgnoreAutoIncludes();
                 var expression = (Expression<Func<T, T>>)tableInfo.BulkConfig.SynchronizeSoftDelete;
                 var (sqlOriginal, sqlParameters) = BatchUtil.GetSqlUpdate(querable, context, typeof(T), expression);
-                var databaseType = SqlAdaptersMapping.GetDatabaseType(context);
-                var (tableAlias, _) = SqlAdaptersMapping.GetAdapterDialect(context).GetBatchSqlReformatTableAliasAndTopStatement(sqlOriginal, databaseType);
+                var (tableAlias, _) = SqlAdaptersMapping.GetAdapterDialect(context).GetBatchSqlReformatTableAliasAndTopStatement(sqlOriginal);
 
                 var sql = sqlOriginal.Replace($"[{tableAlias}]", "T");
                 int indexFrom = sql.IndexOf(".") - 1;

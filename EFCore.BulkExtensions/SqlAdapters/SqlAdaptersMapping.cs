@@ -6,27 +6,18 @@ using System;
 
 namespace EFCore.BulkExtensions.SqlAdapters;
 
-/// <summary>
-/// The database server supported by EFCore.BulkExtensions
-/// </summary>
-public enum SqlType
-{
-    /// <summary>
-    /// Indicates database is PostgreSQL
-    /// </summary>
-    PostgreSql,
-}
+
 
 #pragma warning disable CS1591 // No XML comment required here
 public static class SqlAdaptersMapping
 {
     public static string? ProviderName { get; private set; }
 
-    public static SqlType DatabaseType => SqlType.PostgreSql;
-
     private static readonly PostgreSqlAdapter _adapter = new();
     private static readonly PostgreSqlDialect _dialect = new();
     private static readonly PostgreSqlQueryBuilder _queryBuilder = new();
+
+
     
     public static void UpdateProviderName(string? name)
     {
@@ -38,7 +29,7 @@ public static class SqlAdaptersMapping
 
         ProviderName = name;
 
-        if (!(ProviderName?.EndsWith(SqlType.PostgreSql.ToString(), ignoreCase) ?? false))
+        if (!(ProviderName?.EndsWith("postgresql", ignoreCase) ?? false))
         {
             throw new NotSupportedException($"Database provider '{ProviderName}' is not supported. Only PostgreSQL is supported.");
         }
@@ -71,14 +62,7 @@ public static class SqlAdaptersMapping
         return _dialect;
     }
 
-    /// <summary>
-    /// Returns the Database type
-    /// </summary>
-    /// <returns></returns>
-    public static SqlType GetDatabaseType(DbContext dbContext)
-    {
-        return SqlType.PostgreSql;
-    }
+
 
     /// <summary>
     /// Returns per provider QueryBuilder instance, containing a compilation of SQL queries used in EFCore.

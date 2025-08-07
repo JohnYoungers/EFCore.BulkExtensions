@@ -12,92 +12,34 @@ namespace EFCore.BulkExtensions.Tests;
 
 public class ContextUtil
 {
-    public ContextUtil(SqlType sqlType)
+    public ContextUtil()
     {
-        SqlType = sqlType;
     }
-
-    /// <summary>
-    /// Type of the database server
-    /// </summary>
-    public SqlType SqlType { get; }
 
     public DbContextOptions GetOptions(IInterceptor dbInterceptor) => GetOptions([dbInterceptor]);
     public DbContextOptions GetOptions(IEnumerable<IInterceptor>? dbInterceptors = null) => GetOptions<TestContext>(dbInterceptors);
 
     public DbContextOptions GetOptions<TDbContext>(IEnumerable<IInterceptor>? dbInterceptors = null, string databaseName = nameof(EFCoreBulkTest))
         where TDbContext : DbContext
-        => GetOptions<TDbContext>(SqlType, dbInterceptors, databaseName);
+        => GetOptions<TDbContext>(dbInterceptors, databaseName);
 
-    public DbContextOptions GetOptions<TDbContext>(SqlType dbServerType, 
-        IEnumerable<IInterceptor>? dbInterceptors = null, 
+    public DbContextOptions GetOptions<TDbContext>(IEnumerable<IInterceptor>? dbInterceptors = null, 
         string databaseName = nameof(EFCoreBulkTest))
         where TDbContext : DbContext
     {
         var optionsBuilder = new DbContextOptionsBuilder<TDbContext>();
         
-        switch (dbServerType)
-        {
-            case SqlType.PostgreSql:
-            {
-                var connectionString = GetSqlServerConnectionString(databaseName);
-
-                // ALTERNATIVELY (Using MSSQLLocalDB):
-                //var connectionString = $@"Data Source=(localdb)\MSSQLLocalDB;Database={databaseName};Trusted_Connection=True;MultipleActiveResultSets=True";
-
-                //optionsBuilder.UseSqlServer(connectionString); // Can NOT Test with UseInMemoryDb (Exception: Relational-specific methods can only be used when the context is using a relational)
-                //optionsBuilder.UseSqlServer(connectionString, opt => opt.UseNetTopologySuite()); // NetTopologySuite for Geometry / Geometry types
-                optionsBuilder.UseSqlServer(connectionString, opt =>
-                {
-                    opt.UseNetTopologySuite();
-                    opt.UseHierarchyId();
-                    opt.CommandTimeout(120);
-                });
-                break;
-            }
-            case SqlType.PostgreSql:
-            {
-                string connectionString = GetPostgreSqlConnectionString(databaseName);
+        // PostgreSQL is the only supported database type
+        string connectionString = GetPostgreSqlConnectionString(databaseName);
 #if NET8_0
-                optionsBuilder.UseNpgsql(connectionString);
+        optionsBuilder.UseNpgsql(connectionString);
 #else
-                var dataSource = new NpgsqlDataSourceBuilder(connectionString)
-                    .EnableDynamicJson()
-                    .UseNetTopologySuite()
-                    .Build();
-                optionsBuilder.UseNpgsql(dataSource, opt => opt.UseNetTopologySuite());
+        var dataSource = new NpgsqlDataSourceBuilder(connectionString)
+            .EnableDynamicJson()
+            .UseNetTopologySuite()
+            .Build();
+        optionsBuilder.UseNpgsql(dataSource, opt => opt.UseNetTopologySuite());
 #endif
-                break;
-            }
-            case SqlType.PostgreSql:
-            {
-                string connectionString = GetMySqlConnectionString(databaseName);
-                optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), opt => opt.UseNetTopologySuite());
-                break;
-            }
-            case SqlType.PostgreSql:
-            {
-                string connectionString = GetOracleConnectionString(databaseName);
-                optionsBuilder.UseOracle(connectionString);
-                break;
-            }
-            case SqlType.PostgreSql:
-            {
-                string connectionString = GetSqliteConnectionString(databaseName);
-                optionsBuilder.UseSqlite(connectionString, opt =>
-                {
-                    opt.UseNetTopologySuite();
-                });
-                SQLitePCL.Batteries.Init();
-
-                // ALTERNATIVELY:
-                //string connectionString = (new SqliteConnectionStringBuilder { DataSource = $"{databaseName}Lite.db" }).ToString();
-                //optionsBuilder.UseSqlite(new SqliteConnection(connectionString));
-                break;
-            }
-            default:
-                throw new NotSupportedException($"Database {dbServerType} is not supported");
-        }
 
         if (dbInterceptors?.Any() == true)
         {

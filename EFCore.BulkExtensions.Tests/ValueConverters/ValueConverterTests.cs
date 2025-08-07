@@ -1,4 +1,3 @@
-﻿using EFCore.BulkExtensions.SqlAdapters;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -11,10 +10,7 @@ namespace EFCore.BulkExtensions.Tests.ValueConverters;
 public class ValueConverterTests
 {
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    public void BulkInsertOrUpdate_EntityUsingBuiltInEnumToStringConverter_SavesToDatabase(SqlType sqlType)
+    public void BulkInsertOrUpdate_EntityUsingBuiltInEnumToStringConverter_SavesToDatabase()
     {
         using var db = new VcDbContext(DatabaseName, sqlType);
 
@@ -39,10 +35,7 @@ public class ValueConverterTests
     }
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    public void BatchUpdate_EntityUsingBuiltInEnumToStringConverter_UpdatesDatabaseWithEnumStringValue(SqlType sqlType)
+    public void BatchUpdate_EntityUsingBuiltInEnumToStringConverter_UpdatesDatabaseWithEnumStringValue()
     {
         using var db = new VcDbContext(DatabaseName, sqlType);
 
@@ -74,10 +67,7 @@ public class ValueConverterTests
     }
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    public void BatchDelete_UsingWhereExpressionWithValueConverter_Deletes(SqlType sqlType)
+    public void BatchDelete_UsingWhereExpressionWithValueConverter_Deletes()
     {
         using var db = new VcDbContext(DatabaseName, sqlType);
 
@@ -101,10 +91,8 @@ public class ValueConverterTests
         yield return one;
     }
     
-    private static string GetSelectQuery(SqlType sqlType) =>
-        sqlType == SqlType.PostgreSql
-            ? "SELECT * FROM \"VcModels\" ORDER BY \"Id\" DESC"
-            : "SELECT * FROM VcModels ORDER BY Id DESC";
+    private static string GetSelectQuery() =>
+        "SELECT * FROM \"VcModels\" ORDER BY \"Id\" DESC";
     
     private static string DatabaseName => $"{nameof(EFCoreBulkTest)}_ValueConverters";
 }

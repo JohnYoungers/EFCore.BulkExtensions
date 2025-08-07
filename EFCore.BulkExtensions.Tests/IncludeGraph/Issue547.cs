@@ -1,4 +1,3 @@
-﻿using EFCore.BulkExtensions.SqlAdapters;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -72,8 +71,7 @@ public class Issue547
 {
     //[Theory] // throws: System.Data.SqlTypes.SqlNullValueException : Data is Null. This method or property cannot be called on Null values.
                // at: TableInfo method LoadOutputDataAsync line 1128:var entitiesWithOutputIdentity = QueryOutputTable(...
-    //[InlineData(SqlType.PostgreSql)]
-    public async Task Test(SqlType dbServer)
+    public async Task Test()
     {
         var options = new ContextUtil(dbServer)
             .GetOptions<Issue547DbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_Issue547");

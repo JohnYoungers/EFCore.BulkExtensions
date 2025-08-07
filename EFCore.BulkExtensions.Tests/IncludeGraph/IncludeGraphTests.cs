@@ -79,9 +79,8 @@ public class IncludeGraphTests
     };
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
     //[InlineData(DbServer.Sqlite)]
-    public async Task BulkInsertOrUpdate_EntityWithNestedObjectGraph_SavesGraphToDatabase(SqlType dbServer)
+    public async Task BulkInsertOrUpdate_EntityWithNestedObjectGraph_SavesGraphToDatabase()
     {
         var options = new ContextUtil(dbServer)
             .GetOptions<GraphDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_Graph");
