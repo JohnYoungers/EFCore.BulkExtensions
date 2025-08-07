@@ -1,4 +1,4 @@
-using EFCore.BulkExtensions.SqlAdapters.PostgreSql;
+using EFCore.BulkExtensions.SqlAdapters;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +13,7 @@ public class SqlQueryBuilderPostgreSqlTests
     {
         TableInfo tableInfo = GetTestTableInfo();
         tableInfo.IdentityColumnName = "ItemId";
-        string actual = PostgreSqlQueryBuilder.MergeTable<Item>(tableInfo, OperationType.InsertOrUpdate);
+        string actual = SqlQueryBuilder.MergeTable<Item>(tableInfo, OperationType.InsertOrUpdate);
 
         string expected = @"INSERT INTO ""dbo"".""Item"" (""ItemId"", ""Name"") " +
                           @"(SELECT ""ItemId"", ""Name"" FROM ""dbo"".""ItemTemp1234"") " +
@@ -26,7 +26,7 @@ public class SqlQueryBuilderPostgreSqlTests
     {
         TableInfo tableInfo = GetTestTableInfo((existing, inserted) => $"{inserted}.ItemTimestamp > {existing}.ItemTimestamp");
         tableInfo.IdentityColumnName = "ItemId";
-        string actual = PostgreSqlQueryBuilder.MergeTable<Item>(tableInfo, OperationType.InsertOrUpdate);
+        string actual = SqlQueryBuilder.MergeTable<Item>(tableInfo, OperationType.InsertOrUpdate);
 
         string expected = @"INSERT INTO ""dbo"".""Item"" (""ItemId"", ""Name"") " +
                           @"(SELECT ""ItemId"", ""Name"" FROM ""dbo"".""ItemTemp1234"") " +
@@ -41,7 +41,7 @@ public class SqlQueryBuilderPostgreSqlTests
         TableInfo tableInfo = GetTestTableInfo();
         tableInfo.IdentityColumnName = "ItemId";
         tableInfo.PropertyColumnNamesUpdateDict = new();
-        string actual = PostgreSqlQueryBuilder.MergeTable<Item>(tableInfo, OperationType.InsertOrUpdate);
+        string actual = SqlQueryBuilder.MergeTable<Item>(tableInfo, OperationType.InsertOrUpdate);
 
         string expected = @"INSERT INTO ""dbo"".""Item"" (""ItemId"", ""Name"") " +
                           @"(SELECT ""ItemId"", ""Name"" FROM ""dbo"".""ItemTemp1234"") LIMIT 1 " +
@@ -57,7 +57,7 @@ public class SqlQueryBuilderPostgreSqlTests
     {
         TableInfo tableInfo = GetTestTableInfo();
         tableInfo.IdentityColumnName = "ItemId";
-        string actual = PostgreSqlQueryBuilder.MergeTable<Item>(tableInfo, OperationType.Update);
+        string actual = SqlQueryBuilder.MergeTable<Item>(tableInfo, OperationType.Update);
 
         string expected = @"UPDATE ""dbo"".""Item"" SET ""Name"" = ""dbo"".""ItemTemp1234"".""Name"" " +
                           @"FROM ""dbo"".""ItemTemp1234"" " +
@@ -101,7 +101,7 @@ public class SqlQueryBuilderPostgreSqlTests
         string expected =
             @"UPDATE ""Item"" AS i SET ""Description"" = @Description, ""Price"" = @Price WHERE i.""ItemId"" <= 1";
 
-        var batchUpdate = new PostgreSqlQueryBuilder().RestructureForBatch(sql);
+        var batchUpdate = new SqlQueryBuilder().RestructureForBatch(sql);
 
         Assert.Equal(expected, batchUpdate);
     }
@@ -115,7 +115,7 @@ public class SqlQueryBuilderPostgreSqlTests
         string expected =
             @"UPDATE ""Item"" AS i SET ""Description"" = @Description, ""Price"" = @Price FROM ""User"" AS u WHERE i.""ItemId"" <= 1 AND i.""UserId"" = u.""Id"" ";
 
-        var batchUpdate = new PostgreSqlQueryBuilder().RestructureForBatch(sql);
+        var batchUpdate = new SqlQueryBuilder().RestructureForBatch(sql);
 
         Assert.Equal(expected, batchUpdate);
     }
@@ -125,7 +125,7 @@ public class SqlQueryBuilderPostgreSqlTests
     {
         TableInfo tableInfo = GetTestTableInfo();
 
-        string actual = PostgreSqlQueryBuilder.DropUniqueIndex(tableInfo);
+        string actual = SqlQueryBuilder.DropUniqueIndex(tableInfo);
 
         string expected = @"DROP INDEX ""dbo"".""tempUniqueIndex_dbo_Item_ItemId"";";
         Assert.Equal(expected, actual);
@@ -137,7 +137,7 @@ public class SqlQueryBuilderPostgreSqlTests
         TableInfo tableInfo = GetTestTableInfo();
         tableInfo.TableName = "Temp1234567891011121314151617181920212223";
 
-        string actual = PostgreSqlQueryBuilder.DropUniqueIndex(tableInfo);
+        string actual = SqlQueryBuilder.DropUniqueIndex(tableInfo);
 
         string expected = @"DROP INDEX ""dbo"".""tempUniqueIndex_dbo_Temp1234567891011121314151617181920212223_It"";";
         Assert.Equal(expected, actual);

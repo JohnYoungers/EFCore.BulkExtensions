@@ -1,24 +1,19 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using EFCore.BulkExtensions.SqlAdapters.PostgreSql;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.Internal;
 using System;
 
 namespace EFCore.BulkExtensions.SqlAdapters;
 
-
-
 #pragma warning disable CS1591 // No XML comment required here
 public static class SqlAdaptersMapping
 {
     public static string? ProviderName { get; private set; }
 
-    private static readonly PostgreSqlAdapter _adapter = new();
-    private static readonly PostgreSqlDialect _dialect = new();
-    private static readonly PostgreSqlQueryBuilder _queryBuilder = new();
+    private static readonly SqlAdapter _adapter = new();
+    private static readonly SqlDefaultDialect _dialect = new();
+    private static readonly SqlQueryBuilder _queryBuilder = new();
 
-
-    
     public static void UpdateProviderName(string? name)
     {
         var ignoreCase = StringComparison.InvariantCultureIgnoreCase;
@@ -48,7 +43,7 @@ public static class SqlAdaptersMapping
     /// Creates the bulk operations adapter
     /// </summary>
     /// <returns></returns>
-    public static PostgreSqlAdapter CreateBulkOperationsAdapter(DbContext dbContext)
+    public static SqlAdapter CreateBulkOperationsAdapter(DbContext dbContext)
     {
         return _adapter;
     }
@@ -57,18 +52,16 @@ public static class SqlAdaptersMapping
     /// Returns the Adapter dialect to be used
     /// </summary>
     /// <returns></returns>
-    public static PostgreSqlDialect GetAdapterDialect(DbContext dbContext)
+    public static SqlDefaultDialect GetAdapterDialect(DbContext dbContext)
     {
         return _dialect;
     }
-
-
 
     /// <summary>
     /// Returns per provider QueryBuilder instance, containing a compilation of SQL queries used in EFCore.
     /// </summary>
     /// <returns></returns>
-    public static PostgreSqlQueryBuilder GetQueryBuilder(DbContext dbContext)
+    public static SqlQueryBuilder GetQueryBuilder(DbContext dbContext)
     {
         return _queryBuilder;
     }
