@@ -9,14 +9,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Storage.Internal;
 
-namespace EFCore.BulkExtensions.SqlAdapters.PostgreSql;
+namespace EFCore.BulkExtensions.SqlAdapters;
 
 /// <summary>
 /// PostgreSQL adapter for bulk operations
 /// </summary>
-public class PostgreSqlAdapter
+public class SqlAdapter
 {
-    private PostgreSqlQueryBuilder ProviderSqlQueryBuilder => new PostgreSqlQueryBuilder();
+    private SqlQueryBuilder ProviderSqlQueryBuilder => new SqlQueryBuilder();
 
     /// <inheritdoc/>
     #region Methods
@@ -43,7 +43,7 @@ public class PostgreSqlAdapter
         try
         {
             var operationType = tableInfo.InsertToTempTable ? OperationType.InsertOrUpdate : OperationType.Insert;
-            var sqlCopy = PostgreSqlQueryBuilder.InsertIntoTable(tableInfo, operationType);
+            var sqlCopy = SqlQueryBuilder.InsertIntoTable(tableInfo, operationType);
 
             // when code is: await using var = ... it needs entire code to be encapsulated in ConfigureAwait but then writer.StartRowAsync does not build
             using var writer = isAsync ? await connection.BeginBinaryImportAsync(sqlCopy, cancellationToken).ConfigureAwait(false)
@@ -263,7 +263,7 @@ public class PostgreSqlAdapter
             {
                 tableInfo.InsertToTempTable = true;
 
-                var sqlCreateTableCopy = PostgreSqlQueryBuilder.CreateTableCopy(tableInfo.FullTableName, tableInfo.FullTempTableName, tableInfo.BulkConfig.UseTempDB, tableInfo.BulkConfig.UseUnlogged);
+                var sqlCreateTableCopy = SqlQueryBuilder.CreateTableCopy(tableInfo.FullTableName, tableInfo.FullTempTableName, tableInfo.BulkConfig.UseTempDB, tableInfo.BulkConfig.UseUnlogged);
                 if (isAsync)
                 {
                     await context.Database.ExecuteSqlRawAsync(sqlCreateTableCopy, cancellationToken).ConfigureAwait(false);
@@ -277,7 +277,7 @@ public class PostgreSqlAdapter
 
             if (tableInfo.BulkConfig.CalculateStats)
             {
-                var sqlCreateOutputTableCopy = PostgreSqlQueryBuilder.CreateOutputStatsTable(tableInfo.FullTempOutputTableName, tableInfo.BulkConfig.UseTempDB, tableInfo.BulkConfig.UseUnlogged);
+                var sqlCreateOutputTableCopy = SqlQueryBuilder.CreateOutputStatsTable(tableInfo.FullTempOutputTableName, tableInfo.BulkConfig.UseTempDB, tableInfo.BulkConfig.UseUnlogged);
                 if (isAsync)
                 {
                     await context.Database.ExecuteSqlRawAsync(sqlCreateOutputTableCopy, cancellationToken).ConfigureAwait(false);
@@ -303,8 +303,8 @@ public class PostgreSqlAdapter
 
             if (!hasUniqueIndex)
             {
-                string createUniqueIndex = PostgreSqlQueryBuilder.CreateUniqueIndex(tableInfo);
-                string createUniqueConstrain = PostgreSqlQueryBuilder.CreateUniqueConstrain(tableInfo);
+                string createUniqueIndex = SqlQueryBuilder.CreateUniqueIndex(tableInfo);
+                string createUniqueConstrain = SqlQueryBuilder.CreateUniqueConstrain(tableInfo);
                 if (isAsync)
                 {
                     await context.Database.ExecuteSqlRawAsync(createUniqueIndex, cancellationToken).ConfigureAwait(false);
@@ -330,7 +330,7 @@ public class PostgreSqlAdapter
                 }
             }
 
-            var sqlMergeTable = PostgreSqlQueryBuilder.MergeTable<T>(tableInfo, operationType);
+            var sqlMergeTable = SqlQueryBuilder.MergeTable<T>(tableInfo, operationType);
             if (operationType != OperationType.Read && operationType == OperationType.Delete)
             {
                 if (isAsync)
@@ -385,7 +385,7 @@ public class PostgreSqlAdapter
             {
                 if (uniqueIndexCreated)
                 {
-                    string dropUniqueIndex = PostgreSqlQueryBuilder.DropUniqueIndex(tableInfo);
+                    string dropUniqueIndex = SqlQueryBuilder.DropUniqueIndex(tableInfo);
                     if (isAsync)
                     {
                         await context.Database.ExecuteSqlRawAsync(dropUniqueIndex, cancellationToken).ConfigureAwait(false);
@@ -400,7 +400,7 @@ public class PostgreSqlAdapter
                 {
                     if (outputTableCreated)
                     {
-                        var sqlDropOutputTable = PostgreSqlQueryBuilder.DropTable(tableInfo.FullTempOutputTableName);
+                        var sqlDropOutputTable = SqlQueryBuilder.DropTable(tableInfo.FullTempOutputTableName);
                         if (isAsync)
                         {
                             await context.Database.ExecuteSqlRawAsync(sqlDropOutputTable, cancellationToken).ConfigureAwait(false);
@@ -413,7 +413,7 @@ public class PostgreSqlAdapter
 
                     if (tempTableCreated)
                     {
-                        var sqlDropTable = PostgreSqlQueryBuilder.DropTable(tableInfo.FullTempTableName);
+                        var sqlDropTable = SqlQueryBuilder.DropTable(tableInfo.FullTempTableName);
                         if (isAsync)
                         {
                             await context.Database.ExecuteSqlRawAsync(sqlDropTable, cancellationToken).ConfigureAwait(false);
@@ -460,7 +460,7 @@ public class PostgreSqlAdapter
     /// <inheritdoc/>
     public void Truncate(DbContext context, TableInfo tableInfo)
     {
-        var sqlTruncateTable = new PostgreSqlQueryBuilder().TruncateTable(tableInfo.FullTableName);
+        var sqlTruncateTable = ProviderSqlQueryBuilder.TruncateTable(tableInfo.FullTableName);
         context.Database.ExecuteSqlRaw(sqlTruncateTable);
     }
 
@@ -496,7 +496,7 @@ public class PostgreSqlAdapter
     internal static async Task<(bool, bool)> CheckHasExplicitUniqueConstrainAsync(DbContext context, TableInfo tableInfo,
         bool isAsync, CancellationToken cancellationToken)
     {
-        string countUniqueConstrain = PostgreSqlQueryBuilder.CountUniqueConstrain(tableInfo);
+        string countUniqueConstrain = SqlQueryBuilder.CountUniqueConstrain(tableInfo);
 
         (DbConnection connection, bool connectionOpenedInternally) = await OpenAndGetNpgsqlConnectionAsync(context, isAsync, cancellationToken).ConfigureAwait(false);
         bool hasUniqueConstrain = false;
