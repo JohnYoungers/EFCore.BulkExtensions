@@ -1,4 +1,3 @@
-﻿using EFCore.BulkExtensions.SqlAdapters;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -13,16 +12,13 @@ public class EFCoreBatchTestAsync
     protected static int EntitiesNumber => 1000;
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    public async Task BatchTestAsync(SqlType dbServer)
+    public async Task BatchTestAsync()
     {
         await RunDeleteAllAsync(dbServer);
         await RunInsertAsync(dbServer);
         await RunBatchUpdateAsync(dbServer);
 
         int deletedEntities = 1;
-        if (dbServer == SqlType.PostgreSql)
         {
             deletedEntities = await RunTopBatchDeleteAsync(dbServer);
         }
@@ -32,7 +28,7 @@ public class EFCoreBatchTestAsync
         await UpdateSettingAsync(dbServer, SettingsEnum.Sett1, "Val1UPDATE");
         await UpdateByteArrayToDefaultAsync(dbServer);
 
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
 
         var firstItem = (await context.Items.ToListAsync()).First();
         var lastItem = (await context.Items.ToListAsync()).Last();
@@ -43,7 +39,6 @@ public class EFCoreBatchTestAsync
         Assert.StartsWith("name ", lastItem.Name);
         Assert.EndsWith(" Concatenated", lastItem.Name);
 
-        if (dbServer == SqlType.PostgreSql)
         {
             Assert.EndsWith(" TOP(1)", firstItem.Name);
         }
@@ -55,7 +50,7 @@ public class EFCoreBatchTestAsync
         var dbCommandInterceptor = new TestDbCommandInterceptor();
         var interceptors = new[] { dbCommandInterceptor };
         
-        var options = new ContextUtil(SqlType.PostgreSql).GetOptions<TestContext>(interceptors);
+        var options = new ContextUtil().GetOptions<TestContext>(interceptors);
         using var testContext = new TestContext(options);
 
         string oldPhoneNumber = "7756789999";
@@ -86,9 +81,9 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
         Assert.Equal(expectedSql.Replace("\r\n", "\n"), executedCommand.Sql.Replace("\r\n", "\n"));
     }
 
-    internal async Task RunDeleteAllAsync(SqlType dbServer)
+    internal async Task RunDeleteAllAsync()
     {
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
         await context.Items.AddAsync(new Item { }); // used for initial add so that after RESEED it starts from 1, not 0
         await context.SaveChangesAsync();
 
@@ -96,19 +91,19 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
         await context.BulkDeleteAsync(context.Items.ToList());
 
         // RESET AutoIncrement
-        string deleteTableSql = dbServer switch
+        string deleteTableSql = // PostgreSQL-only implementation
         {
-            SqlType.PostgreSql => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
-            SqlType.PostgreSql => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
-            SqlType.PostgreSql => $@"ALTER SEQUENCE ""{nameof(Item)}_{nameof(Item.ItemId)}_seq"" RESTART WITH 1",
+            $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
+            $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
+            $@"ALTER SEQUENCE ""{nameof(Item)}_{nameof(Item.ItemId)}_seq"" RESTART WITH 1",
             _ => throw new ArgumentException($"Unknown database type: '{dbServer}'.", nameof(dbServer)),
         };
         context.Database.ExecuteSqlRaw(deleteTableSql);
     }
 
-    private static async Task RunInsertAsync(SqlType dbServer)
+    private static async Task RunInsertAsync()
     {
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
         var entities = new List<Item>();
         for (int i = 1; i <= EntitiesNumber; i++)
         {
@@ -128,20 +123,18 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
         await context.SaveChangesAsync();
     }
 
-    private static async Task RunBatchUpdateAsync(SqlType dbServer)
+    private static async Task RunBatchUpdateAsync()
     {
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
 
         //var updateColumns = new List<string> { nameof(Item.Quantity) }; // Adding explicitly PropertyName for update to its default value
 
         decimal price = 0;
 
         var query = context.Items.AsQueryable();
-        if (dbServer == SqlType.PostgreSql)
         {
             query = query.Where(a => a.ItemId <= 500 && a.Price >= price);
         }
-        if (dbServer == SqlType.PostgreSql)
         {
             query = query.Where(a => a.ItemId <= 500); // Sqlite currently does Not support multiple conditions
         }
@@ -150,7 +143,6 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
 #pragma warning disable
         await query.BatchUpdateAsync(a => new Item { Name = a.Name + " Concatenated", Quantity = a.Quantity + 100, Price = null }); // example of BatchUpdate value Increment/Decrement
 
-        if (dbServer == SqlType.PostgreSql) // Sqlite currently does Not support Take(): LIMIT
         {
             query = context.Items.Where(a => a.ItemId <= 500 && a.Price == null);
             await query.Take(1).BatchUpdateAsync(a => new Item { Name = a.Name + " TOP(1)", Quantity = a.Quantity + 100 }); // example of BatchUpdate with TOP(1)
@@ -164,7 +156,6 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
                                         .BatchUpdateAsync(a => new Item() { TimeUpdated = DateTime.Now })
                                         .ConfigureAwait(false);
 
-        if (dbServer == SqlType.PostgreSql) // Sqlite Not supported
         {
             var newValue = 5;
             await context.Parents.Where(parent => parent.ParentId == 1)
@@ -177,21 +168,21 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
         }
     }
 
-    private static async Task<int> RunTopBatchDeleteAsync(SqlType dbServer)
+    private static async Task<int> RunTopBatchDeleteAsync()
     {
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
         return await context.Items.Where(a => a.ItemId > 500).Take(1).BatchDeleteAsync();
     }
 
-    private static async Task RunBatchDeleteAsync(SqlType dbServer)
+    private static async Task RunBatchDeleteAsync()
     {
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
         await context.Items.Where(a => a.ItemId > 500).BatchDeleteAsync();
     }
 
-    private static async Task UpdateSettingAsync(SqlType dbServer, SettingsEnum settings, object value)
+    private static async Task UpdateSettingAsync(SettingsEnum settings, object value)
     {
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
 
         await context.TruncateAsync<Setting>();
 
@@ -204,9 +195,9 @@ WHERE [p].[PhoneNumber] = @__oldPhoneNumber_0";
         await context.TruncateAsync<Setting>();
     }
 
-    private static async Task UpdateByteArrayToDefaultAsync(SqlType dbServer)
+    private static async Task UpdateByteArrayToDefaultAsync()
     {
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
 
         await context.Files.BatchUpdateAsync(new File { DataBytes = null }, updateColumns: new List<string> { nameof(File.DataBytes) }).ConfigureAwait(false);
         await context.Files.BatchUpdateAsync(a => new File { DataBytes = null }).ConfigureAwait(false);

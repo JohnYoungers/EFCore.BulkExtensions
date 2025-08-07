@@ -10,9 +10,7 @@ namespace EFCore.BulkExtensions.Tests.ShadowProperties;
 public class ShadowPropertyTests
 {
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    public void BulkInsertOrUpdate_EntityWithShadowProperties_SavesToDatabase(SqlType dbServer)
+    public void BulkInsertOrUpdate_EntityWithShadowProperties_SavesToDatabase()
     {
         var options = new ContextUtil(dbServer).GetOptions<SpDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_ShadowProperties");
         using var db = new SpDbContext(options);
@@ -30,9 +28,7 @@ public class ShadowPropertyTests
     }
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    public void BulkInsertOrUpdate_EntityWithShadowProperties_GlobalFunc_SavesToDatabase(SqlType dbServer)
+    public void BulkInsertOrUpdate_EntityWithShadowProperties_GlobalFunc_SavesToDatabase()
     {
         var options = new ContextUtil(dbServer)
             .GetOptions<SpDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_ShadowProperties");

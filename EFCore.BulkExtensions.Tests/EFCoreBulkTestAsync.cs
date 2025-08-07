@@ -1,4 +1,3 @@
-using EFCore.BulkExtensions.SqlAdapters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -21,10 +20,8 @@ public class EFCoreBulkTestAsync
     //private static readonly Func<TestContext, IEnumerable<Item>> AllItemsQuery = EF.CompileQuery<TestContext, IEnumerable<Item>>(ctx => ctx.Items.AsNoTracking());
 
     [Theory]
-    [InlineData(SqlType.PostgreSql, true)]
-    [InlineData(SqlType.PostgreSql, true)]
     //[InlineData(DatabaseType.SqlServer, false)] // for speed comparison with Regular EF CUD operations
-    public async Task OperationsTestAsync(SqlType sqlType, bool isBulk)
+    public async Task OperationsTestAsync(bool isBulk)
     {
         //await DeletePreviousDatabaseAsync().ConfigureAwait(false);
         await new EFCoreBatchTestAsync().RunDeleteAllAsync(sqlType);
@@ -36,7 +33,6 @@ public class EFCoreBulkTestAsync
 
         await RunReadAsync(sqlType);
 
-        if (sqlType == SqlType.PostgreSql)
         {
             await RunInsertOrUpdateOrDeleteAsync(isBulk, sqlType); // Not supported for Sqlite (has only UPSERT), instead use BulkRead, then split list into sublists and call separately Bulk methods for Insert, Update, Delete.
         }
@@ -44,17 +40,16 @@ public class EFCoreBulkTestAsync
     }
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
     //[InlineData(DbServer.Sqlite)] // has to be run separately as single test, otherwise throws (SQLite Error 1: 'table "#MyTempTable1" already exists'.)
-    public async Task SideEffectsTestAsync(SqlType sqlType)
+    public async Task SideEffectsTestAsync()
     {
         await BulkOperationShouldNotCloseOpenConnectionAsync(sqlType, context => context.BulkInsertAsync(new[] { new Item() }), "1");
         await BulkOperationShouldNotCloseOpenConnectionAsync(sqlType, context => context.BulkUpdateAsync(new[] { new Item() }), "2");
     }
 
-    private static async Task DeletePreviousDatabaseAsync(SqlType dbServer)
+    private static async Task DeletePreviousDatabaseAsync()
     {
-        using var context = new TestContext(dbServer);
+        using var context = new TestContext();
         await context.Database.EnsureDeletedAsync().ConfigureAwait(false);
     }
 
@@ -64,9 +59,9 @@ public class EFCoreBulkTestAsync
             Debug.WriteLine(percentage);
     }
 
-    private static async Task BulkOperationShouldNotCloseOpenConnectionAsync(SqlType sqlType, Func<TestContext, Task> bulkOperation, string tableSufix)
+    private static async Task BulkOperationShouldNotCloseOpenConnectionAsync(Func<TestContext, Task> bulkOperation, string tableSufix)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var sqlHelper = context.GetService<ISqlGenerationHelper>();
         await context.Database.OpenConnectionAsync();
@@ -78,11 +73,11 @@ public class EFCoreBulkTestAsync
             var tableName = sqlHelper.DelimitIdentifier("#MyTempTable" + tableSufix);
             var createTableSql = $" TABLE {tableName} ({columnName} INTEGER);";
 
-            createTableSql = sqlType switch
+            createTableSql = // PostgreSQL-only implementation
             {
-                SqlType.PostgreSql => $"CREATE TEMPORARY {createTableSql}",
-                SqlType.PostgreSql => $"CREATE {createTableSql}",
-                SqlType.PostgreSql => $"CREATE GLOBAL TEMPORARY {createTableSql}",
+                $"CREATE TEMPORARY {createTableSql}",
+                $"CREATE {createTableSql}",
+                $"CREATE GLOBAL TEMPORARY {createTableSql}",
                 _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
             };
             await context.Database.ExecuteSqlRawAsync(createTableSql);
@@ -98,9 +93,9 @@ public class EFCoreBulkTestAsync
         }
     }
 
-    private static async Task RunInsertAsync(bool isBulk, SqlType sqlType)
+    private static async Task RunInsertAsync(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var entities = new List<Item>();
         var subEntities = new List<ItemHistory>();
@@ -135,7 +130,6 @@ public class EFCoreBulkTestAsync
 
         if (isBulk)
         {
-            if (sqlType == SqlType.PostgreSql)
             {
                 using var transaction = await context.Database.BeginTransactionAsync();
                 var bulkConfig = new BulkConfig
@@ -163,7 +157,6 @@ public class EFCoreBulkTestAsync
 
                 await transaction.CommitAsync();
             }
-            else if (sqlType == SqlType.PostgreSql)
             {
                 using var transaction = await context.Database.BeginTransactionAsync();
 
@@ -201,9 +194,9 @@ public class EFCoreBulkTestAsync
         Assert.Equal("name " + (EntitiesNumber - 1), lastEntity?.Name);
     }
 
-    private static async Task RunInsertOrUpdateAsync(bool isBulk, SqlType sqlType)
+    private static async Task RunInsertOrUpdateAsync(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
         var entities = new List<Item>();
         var dateTimeNow = DateTime.Now;
         var dateTimeOffsetNow = DateTimeOffset.UtcNow;
@@ -228,7 +221,6 @@ public class EFCoreBulkTestAsync
                 SqlBulkCopyOptions = SqlBulkCopyOptions.KeepIdentity
             };
             await context.BulkInsertOrUpdateAsync(entities, bulkConfig);
-            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(1, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(EntitiesNumber / 2 - 1, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -250,9 +242,9 @@ public class EFCoreBulkTestAsync
         Assert.Equal("name InsertOrUpdate " + EntitiesNumber, lastEntity?.Name);
     }
 
-    private static async Task RunInsertOrUpdateOrDeleteAsync(bool isBulk, SqlType sqlType)
+    private static async Task RunInsertOrUpdateOrDeleteAsync(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var entities = new List<Item>();
         var dateTimeNow = DateTime.Now;
@@ -292,7 +284,7 @@ public class EFCoreBulkTestAsync
         }
 
         // TEST
-        using var contextRead = new TestContext(sqlType);
+        using var contextRead = new TestContext();
         int entitiesCount = await contextRead.Items.CountAsync(); // = ItemsCountQuery(context);
         Item? firstEntity = contextRead.Items.OrderBy(a => a.ItemId).FirstOrDefault(); // = LastItemQuery(context);
         Item? lastEntity = contextRead.Items.OrderByDescending(a => a.ItemId).FirstOrDefault();
@@ -324,9 +316,9 @@ public class EFCoreBulkTestAsync
         Assert.True(await context.Entries.AnyAsync(e => e.Name == "Entry_InsertOrUpdateOrDelete_Deleted"));
     }
 
-    private static async Task RunUpdateAsync(bool isBulk, SqlType sqlType)
+    private static async Task RunUpdateAsync(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         int counter = 1;
         var entities = context.Items.AsNoTracking().ToList();
@@ -339,7 +331,6 @@ public class EFCoreBulkTestAsync
         {
             var bulkConfig = new BulkConfig() { SetOutputIdentity = true, CalculateStats = true };
             await context.BulkUpdateAsync(entities, bulkConfig);
-            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(EntitiesNumber, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -361,9 +352,9 @@ public class EFCoreBulkTestAsync
         Assert.Equal("Desc Update " + EntitiesNumber, lastEntity?.Description);
     }
 
-    private static async Task RunReadAsync(SqlType sqlType)
+    private static async Task RunReadAsync()
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var entities = new List<Item>();
         for (int i = 1; i < EntitiesNumber; i++)
@@ -380,9 +371,9 @@ public class EFCoreBulkTestAsync
         Assert.Equal(0, entities[3].ItemId);
     }
 
-    private async Task RunDeleteAsync(bool isBulk, SqlType sqlType)
+    private async Task RunDeleteAsync(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var entities = context.Items.AsNoTracking().ToList();
         // ItemHistories will also be deleted because of Relationship - ItemId (Delete Rule: Cascade)
@@ -390,7 +381,6 @@ public class EFCoreBulkTestAsync
         {
             var bulkConfig = new BulkConfig() { CalculateStats = true };
             await context.BulkDeleteAsync(entities, bulkConfig);
-            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -411,10 +401,10 @@ public class EFCoreBulkTestAsync
         Assert.Null(lastEntity);
 
         // RESET AutoIncrement
-        string deleteTableSql = sqlType switch
+        string deleteTableSql = // PostgreSQL-only implementation
         {
-            SqlType.PostgreSql => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
-            SqlType.PostgreSql => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
+            $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
+            $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
             _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
         };
         await context.Database.ExecuteSqlRawAsync(deleteTableSql).ConfigureAwait(false);

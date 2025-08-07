@@ -10,8 +10,7 @@ namespace EFCore.BulkExtensions.Tests.Owned;
 public class InheritedOwnedTests
 {
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    public async Task InheritedOwnedTest(SqlType sqlType)
+    public async Task InheritedOwnedTest()
     {
         var options = new ContextUtil(sqlType)
             .GetOptions<InheritedDbContext>(databaseName: $"{nameof(EFCoreBulkTest)}_NestedOwned");

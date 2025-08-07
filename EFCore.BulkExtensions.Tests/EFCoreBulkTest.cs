@@ -1,4 +1,3 @@
-using EFCore.BulkExtensions.SqlAdapters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -21,10 +20,9 @@ public class EFCoreBulkTest
     private static readonly Func<TestContext, IEnumerable<Item>> AllItemsQuery = EF.CompileQuery<TestContext, IEnumerable<Item>>(ctx => ctx.Items.AsNoTracking());
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    public void InsertEnumStringValue(SqlType sqlType)
+    public void InsertEnumStringValue()
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
         context.Database.ExecuteSqlRaw($@"DELETE FROM ""{nameof(Wall)}""");
         context.Database.ExecuteSqlRaw($@"DELETE FROM ""{nameof(TimeRecord)}""");
 
@@ -62,10 +60,9 @@ public class EFCoreBulkTest
     }
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    public void InsertTestPostgreSql(SqlType sqlType)
+    public void InsertTestPostgreSql()
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
         
         context.Database.ExecuteSqlRaw($@"DELETE FROM ""{nameof(Item)}""");
         context.Database.ExecuteSqlRaw($@"ALTER SEQUENCE ""{nameof(Item)}_{nameof(Item.ItemId)}_seq"" RESTART WITH 1");
@@ -266,14 +263,13 @@ public class EFCoreBulkTest
     }
     
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
     // -- Before first run following command should be executed on mysql server:
     //    SET GLOBAL local_infile = true;
     // -- otherwise exception: "Loading local data is disabled; this must be enabled on both the client and server sides"
     // -- For client side connection string is already set with: "AllowLoadLocalInfile=true"
-    public void InsertTestMySql(SqlType sqlType)
+    public void InsertTestMySql()
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var currentTime = DateTime.UtcNow; // default DateTime type: "timestamp with time zone"; DateTime.Now goes with: "timestamp without time zone"
 
@@ -384,10 +380,8 @@ public class EFCoreBulkTest
     }
 
     [Theory]
-    [InlineData(SqlType.PostgreSql, true)]
-    [InlineData(SqlType.PostgreSql, true)]
     //[InlineData(DbServer.SqlServer, false)] // for speed comparison with Regular EF CUD operations
-    public void OperationsTest(SqlType sqlType, bool isBulk)
+    public void OperationsTest(bool isBulk)
     {
         //DeletePreviousDatabase();
         new EFCoreBatchTest().RunDeleteAll(sqlType);
@@ -398,7 +392,6 @@ public class EFCoreBulkTest
 
         RunRead(sqlType);
 
-        if (sqlType == SqlType.PostgreSql)
         {
             RunInsertOrUpdateOrDelete(isBulk, sqlType); // Not supported for Sqlite (has only UPSERT), instead use BulkRead, then split list into sublists and call separately Bulk methods for Insert, Update, Delete.
         }
@@ -408,17 +401,15 @@ public class EFCoreBulkTest
     }
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    [InlineData(SqlType.PostgreSql)]
-    public void SideEffectsTest(SqlType sqlType)
+    public void SideEffectsTest()
     {
         BulkOperationShouldNotCloseOpenConnection(sqlType, context => context.BulkInsert(new[] { new Item() }));
         BulkOperationShouldNotCloseOpenConnection(sqlType, context => context.BulkUpdate(new[] { new Item() }));
     }
 
-    private static void BulkOperationShouldNotCloseOpenConnection(SqlType sqlType, Action<TestContext> bulkOperation)
+    private static void BulkOperationShouldNotCloseOpenConnection(Action<TestContext> bulkOperation)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var sqlHelper = context.GetService<ISqlGenerationHelper>();
         context.Database.OpenConnection();
@@ -430,11 +421,11 @@ public class EFCoreBulkTest
             var tableName = sqlHelper.DelimitIdentifier("#MyTempTable");
             var createTableSql = $" TABLE {tableName} ({columnName} INTEGER);";
 
-            createTableSql = sqlType switch
+            createTableSql = // PostgreSQL-only implementation
             {
-                SqlType.PostgreSql => $"CREATE TEMPORARY {createTableSql}",
-                SqlType.PostgreSql => $"CREATE {createTableSql}",
-                SqlType.PostgreSql => $"CREATE GLOBAL TEMPORARY {createTableSql}",
+                $"CREATE TEMPORARY {createTableSql}",
+                $"CREATE {createTableSql}",
+                $"CREATE GLOBAL TEMPORARY {createTableSql}",
                 _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
             };
 
@@ -455,15 +446,15 @@ public class EFCoreBulkTest
         }
     }
 
-    private static void DeletePreviousDatabase(SqlType sqlType)
+    private static void DeletePreviousDatabase()
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
         context.Database.EnsureDeleted();
     }
 
-    private static void CheckQueryCache(SqlType sqlType)
+    private static void CheckQueryCache()
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
         var compiledQueryCache = ((MemoryCache)context.GetService<IMemoryCache>());
 
         Assert.Equal(0, compiledQueryCache.Count);
@@ -475,9 +466,9 @@ public class EFCoreBulkTest
             Debug.WriteLine(percentage);
     }
 
-    private static void RunInsert(bool isBulk, SqlType sqlType)
+    private static void RunInsert(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
         var categories  = new List<ItemCategory> { new ItemCategory { Id = 1, Name = "Some 1" }, new ItemCategory { Id = 2, Name = "Some 2" } };
         var entities = new List<Item>();
         var subEntities = new List<ItemHistory>();
@@ -515,7 +506,6 @@ public class EFCoreBulkTest
         if (isBulk)
         {
             context.BulkInsertOrUpdate(categories);
-            if (sqlType == SqlType.PostgreSql)
             {
                 using var transaction = context.Database.BeginTransaction();
                 var bulkConfig = new BulkConfig
@@ -543,7 +533,6 @@ public class EFCoreBulkTest
 
                 transaction.Commit();
             }
-            else if (sqlType == SqlType.PostgreSql)
             {
                 using var transaction = context.Database.BeginTransaction();
                 var bulkConfig = new BulkConfig() { SetOutputIdentity = true };
@@ -578,9 +567,9 @@ public class EFCoreBulkTest
         Assert.Equal("name " + (EntitiesNumber - 1), lastEntity?.Name);
     }
 
-    private static void RunInsertOrUpdate(bool isBulk, SqlType sqlType)
+    private static void RunInsertOrUpdate(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var entities = new List<Item>();
         var dateTimeNow = DateTime.Now;
@@ -604,7 +593,6 @@ public class EFCoreBulkTest
                 SqlBulkCopyOptions = SqlBulkCopyOptions.KeepIdentity
             };
             context.BulkInsertOrUpdate(entities, bulkConfig, (a) => WriteProgress(a));
-            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(1, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(EntitiesNumber / 2 - 1, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -627,9 +615,9 @@ public class EFCoreBulkTest
         Assert.Equal("name InsertOrUpdate " + EntitiesNumber, lastEntity?.Name);
     }
 
-    private static void RunInsertOrUpdateOrDelete(bool isBulk, SqlType sqlType)
+    private static void RunInsertOrUpdateOrDelete(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var entities = new List<Item>();
         var dateTimeNow = DateTime.Now;
@@ -701,9 +689,9 @@ public class EFCoreBulkTest
         Assert.True(context.Entries.Any(e => e.Name == "Entry_InsertOrUpdateOrDelete_Deleted"));
     }
 
-    private static void RunUpdate(bool isBulk, SqlType sqlType)
+    private static void RunUpdate(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         int counter = 1;
         var entities = context.Items.AsNoTracking().ToList();
@@ -717,11 +705,10 @@ public class EFCoreBulkTest
             var bulkConfig = new BulkConfig
             {
                 PropertiesToInclude = new List<string> { nameof(Item.Description) },
-                UpdateByProperties = sqlType == SqlType.PostgreSql ? new List<string> { nameof(Item.Name) } : null,
+                UpdateByProperties = new List<string> { nameof(Item.Name) },
                 CalculateStats = true
             };
             context.BulkUpdate(entities, bulkConfig);
-            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(EntitiesNumber, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -743,9 +730,9 @@ public class EFCoreBulkTest
         Assert.Equal("name InsertOrUpdate " + EntitiesNumber, lastEntity?.Name);
     }
 
-    private static void RunRead(SqlType sqlType)
+    private static void RunRead()
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var entities = new List<Item>();
         for (int i = 1; i < EntitiesNumber; i++)
@@ -771,9 +758,9 @@ public class EFCoreBulkTest
         Assert.Equal(0, entities[3].ItemId);
     }
 
-    private void RunDelete(bool isBulk, SqlType sqlType)
+    private void RunDelete(bool isBulk)
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 
         var entities = context.Items.ToList();
         // ItemHistories will also be deleted because of Relationship - ItemId (Delete Rule: Cascade)
@@ -781,7 +768,6 @@ public class EFCoreBulkTest
         {
             var bulkConfig = new BulkConfig() { CalculateStats = true };
             context.BulkDelete(entities, bulkConfig);
-            if (sqlType == SqlType.PostgreSql)
             {
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberInserted);
                 Assert.Equal(0, bulkConfig.StatsInfo?.StatsNumberUpdated);
@@ -802,10 +788,10 @@ public class EFCoreBulkTest
         Assert.Null(lastEntity);
 
         // RESET AutoIncrement
-        string deleteTableSql = sqlType switch
+        string deleteTableSql = // PostgreSQL-only implementation
         {
-            SqlType.PostgreSql => $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
-            SqlType.PostgreSql => $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
+            $"DBCC CHECKIDENT('[dbo].[{nameof(Item)}]', RESEED, 0);",
+            $"DELETE FROM sqlite_sequence WHERE name = '{nameof(Item)}';",
             _ => throw new ArgumentException($"Unknown database type: '{sqlType}'.", nameof(sqlType)),
         };
         context.Database.ExecuteSqlRaw(deleteTableSql);

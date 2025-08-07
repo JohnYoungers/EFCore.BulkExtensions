@@ -101,7 +101,7 @@ public class TestContext : TestContextBase
     public virtual DbSet<ChildType> ChildTypes { get; set; } = null!;
     public virtual DbSet<ParentType> ParentTypes { get; set; } = null!;
 
-    public TestContext(SqlType sqlType) : this (new ContextUtil(sqlType).GetOptions()) {}
+    public TestContext() : this (new ContextUtil().GetOptions()) {}
     
     public TestContext(DbContextOptions options) : base(options)
     {
@@ -389,8 +389,8 @@ public class OracleTestContext : TestContextBase
     public DbSet<ItemHistory> ItemHistories { get; set; } = null!;
     public DbSet<ItemCategory> Categories { get; set; } = null!;
 
-    public OracleTestContext(SqlType sqlType) 
-        : base(new ContextUtil(sqlType).GetOptions<OracleTestContext>()) {}
+    public OracleTestContext() 
+        : base(new ContextUtil().GetOptions<OracleTestContext>()) {}
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

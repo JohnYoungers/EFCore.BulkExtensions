@@ -301,10 +301,9 @@ public class SqlQueryBuilderUnitTests
     }
 
     [Theory]
-    [InlineData(SqlType.PostgreSql)]
-    public async Task DelegateDecompiler_DecompileAsync_WorksAsync(SqlType sqlType)
+    public async Task DelegateDecompiler_DecompileAsync_WorksAsync()
     {
-        using var context = new TestContext(sqlType);
+        using var context = new TestContext();
 #pragma warning disable
         await context.Items
             .Where(x => x.ItemId < 0)
