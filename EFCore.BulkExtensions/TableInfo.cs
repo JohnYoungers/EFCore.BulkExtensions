@@ -170,8 +170,7 @@ public class TableInfo
         string? defaultSchema = null;
         if (isNpgsql)
         {
-            var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
-            defaultSchema = adapter.ReconfigureTableInfo(context, this);
+            defaultSchema = SqlAdapter.ReconfigureTableInfo(context, this);
         }
         else
         {
@@ -290,7 +289,9 @@ public class TableInfo
 
         // PostgreSQL-only implementation
         {
-            var strategyName = SqlAdaptersMapping.ValueGenerationStrategy;
+#pragma warning disable EF1001
+            var strategyName = Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.Internal.NpgsqlAnnotationNames.ValueGenerationStrategy;
+#pragma warning restore EF1001
             if (!strategyName.Contains(":Value"))
             {
                 strategyName = strategyName.Replace("Value", ":Value"); //example 'SqlServer:ValueGenerationStrategy'
@@ -302,7 +303,8 @@ public class TableInfo
                 bool hasIdentity = false;
                 if (annotation != null)
                 {
-                    hasIdentity = SqlAdaptersMapping.PropertyHasIdentity(annotation);
+                    hasIdentity = (Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy?)annotation.Value == 
+                        Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn;
                 }
                 if (hasIdentity)
                 {
@@ -814,7 +816,7 @@ public class TableInfo
         {
             sqlQueryCounts.Add(sqlQueryCountBase + $"'{actionCode}'");
 
-            var resultParameter = SqlAdaptersMapping.GetQueryBuilder(context).CreateParameter("@result" + actionCode, null);
+            var resultParameter = SqlQueryBuilder.CreateParameter("@result" + actionCode, null);
             if (resultParameter is null)
             {
                 throw new ArgumentException("Unable to create an instance of IDbDataParameter");

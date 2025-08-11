@@ -71,7 +71,7 @@ public static class IQueryableExtensions
         IList<DbParameter> parameters;
         try
         {
-            using var dbCommand = SqlAdaptersMapping.GetQueryBuilder(context).CreateCommand(); // Use a DbCommand to convert parameter values using ValueConverters to the correct type.
+            using var dbCommand = SqlQueryBuilder.CreateCommand(); // Use a DbCommand to convert parameter values using ValueConverters to the correct type.
             foreach (var param in command.Parameters)
             {
                 var values = parameterValues[param.InvariantName];
@@ -91,7 +91,7 @@ public static class IQueryableExtensions
                 ex.Message.StartsWith(npgsqlSpecParamMessage)) // Fix for BatchDelete with Contains on PostgreSQL
             {
                 var parameterNames = new HashSet<string>(command.Parameters.Select(p => p.InvariantName));
-                parameters = parameterValues.Where(pv => parameterNames.Contains(pv.Key)).Select(pv => SqlAdaptersMapping.GetQueryBuilder(context).CreateParameter("@" + pv.Key, pv.Value)).ToList();
+                parameters = parameterValues.Where(pv => parameterNames.Contains(pv.Key)).Select(pv => SqlQueryBuilder.CreateParameter("@" + pv.Key, pv.Value)).ToList();
             }
             else
             {

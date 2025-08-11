@@ -14,27 +14,28 @@ namespace EFCore.BulkExtensions.SqlAdapters;
 /// <summary>
 /// PostgreSQL adapter for bulk operations
 /// </summary>
-public class SqlAdapter
+public static class SqlAdapter
 {
-    private SqlQueryBuilder ProviderSqlQueryBuilder => new SqlQueryBuilder();
-
-    /// <inheritdoc/>
     #region Methods
-    // Insert
-    public void Insert<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress)
+    /// <summary>
+    /// Performs a bulk insert operation
+    /// </summary>
+    public static void Insert<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress)
     {
         InsertAsync(context, entities, tableInfo, progress, isAsync: false, CancellationToken.None).GetAwaiter().GetResult();
     }
 
-    /// <inheritdoc/>
-    public async Task InsertAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress,
+    /// <summary>
+    /// Performs a bulk insert operation asynchronously
+    /// </summary>
+    public static async Task InsertAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress,
         CancellationToken cancellationToken)
     {
         await InsertAsync(context, entities, tableInfo, progress, isAsync: true, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
-    protected static async Task InsertAsync<T>(DbContext context, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress, bool isAsync, CancellationToken cancellationToken)
+    private static async Task InsertAsync<T>(DbContext context, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress, bool isAsync, CancellationToken cancellationToken)
     {
         if (entities == null || !entities.Any()) return;
 
@@ -237,22 +238,26 @@ public class SqlAdapter
         return propertyValue;
     }
 
-    /// <inheritdoc/>
-    public void Merge<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, OperationType operationType, Action<decimal>? progress)
+    /// <summary>
+    /// Performs a bulk merge operation
+    /// </summary>
+    public static void Merge<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, OperationType operationType, Action<decimal>? progress)
         where T : class
     {
         MergeAsync(context, type, entities, tableInfo, operationType, progress, isAsync: false, CancellationToken.None).GetAwaiter().GetResult();
     }
 
-    /// <inheritdoc/>
-    public async Task MergeAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, OperationType operationType, Action<decimal>? progress,
+    /// <summary>
+    /// Performs a bulk merge operation asynchronously
+    /// </summary>
+    public static async Task MergeAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, OperationType operationType, Action<decimal>? progress,
         CancellationToken cancellationToken) where T : class
     {
         await MergeAsync(context, type, entities, tableInfo, operationType, progress, isAsync: true, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
-    protected async Task MergeAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, OperationType operationType, Action<decimal>? progress,
+    private static async Task MergeAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, OperationType operationType, Action<decimal>? progress,
         bool isAsync, CancellationToken cancellationToken) where T : class
     {
         bool tempTableCreated = false;
@@ -447,29 +452,37 @@ public class SqlAdapter
         }
     }
 
-    /// <inheritdoc/>
-    public void Read<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress) where T : class
+    /// <summary>
+    /// Performs a bulk read operation
+    /// </summary>
+    public static void Read<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress) where T : class
         => ReadAsync(context, type, entities, tableInfo, progress, isAsync: false, CancellationToken.None).GetAwaiter().GetResult();
 
-    /// <inheritdoc/>
-    public async Task ReadAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress, CancellationToken cancellationToken) where T : class
+    /// <summary>
+    /// Performs a bulk read operation asynchronously
+    /// </summary>
+    public static async Task ReadAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress, CancellationToken cancellationToken) where T : class
         => await ReadAsync(context, type, entities, tableInfo, progress, isAsync: true, cancellationToken).ConfigureAwait(false);
 
     /// <inheritdoc/>
-    protected async Task ReadAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress, bool isAsync, CancellationToken cancellationToken) where T : class
+    private static async Task ReadAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress, bool isAsync, CancellationToken cancellationToken) where T : class
         => await MergeAsync(context, type, entities, tableInfo, OperationType.Read, progress, isAsync, cancellationToken).ConfigureAwait(false);
 
-    /// <inheritdoc/>
-    public void Truncate(DbContext context, TableInfo tableInfo)
+    /// <summary>
+    /// Performs a bulk truncate operation
+    /// </summary>
+    public static void Truncate(DbContext context, TableInfo tableInfo)
     {
-        var sqlTruncateTable = ProviderSqlQueryBuilder.TruncateTable(tableInfo.FullTableName);
+        var sqlTruncateTable = SqlQueryBuilder.TruncateTable(tableInfo.FullTableName);
         context.Database.ExecuteSqlRaw(sqlTruncateTable);
     }
 
-    /// <inheritdoc/>
-    public async Task TruncateAsync(DbContext context, TableInfo tableInfo, CancellationToken cancellationToken)
+    /// <summary>
+    /// Performs a bulk truncate operation asynchronously
+    /// </summary>
+    public static async Task TruncateAsync(DbContext context, TableInfo tableInfo, CancellationToken cancellationToken)
     {
-        var sqlTruncateTable = ProviderSqlQueryBuilder.TruncateTable(tableInfo.FullTableName);
+        var sqlTruncateTable = SqlQueryBuilder.TruncateTable(tableInfo.FullTableName);
         await context.Database.ExecuteSqlRawAsync(sqlTruncateTable, cancellationToken).ConfigureAwait(false);
     }
     #endregion
@@ -588,7 +601,7 @@ public class SqlAdapter
     /// <param name="context"></param>
     /// <param name="tableInfo"></param>
     /// <returns></returns>
-    public string? ReconfigureTableInfo(DbContext context, TableInfo tableInfo)
+    public static string? ReconfigureTableInfo(DbContext context, TableInfo tableInfo)
     {
         var defaultSchema = "public";
         var csb = new NpgsqlConnectionStringBuilder(context.Database.GetConnectionString());

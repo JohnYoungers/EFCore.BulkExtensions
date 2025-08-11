@@ -12,14 +12,14 @@ namespace EFCore.BulkExtensions.SqlAdapters;
 /// <summary>
 /// Contains a list of methods to generate PostgreSQL SQL queries and adapters
 /// </summary>
-public class SqlQueryBuilder
+public static class SqlQueryBuilder
 {
     /// <summary>
     /// Restructures a sql query for batch commands
     /// </summary>
     /// <param name="sql"></param>
     /// <param name="isDelete"></param>
-    public string RestructureForBatch(string sql, bool isDelete = false)
+    public static string RestructureForBatch(string sql, bool isDelete = false)
     {
         sql = sql.Replace("[", @"""").Replace("]", @"""");
         string firstLetterOfTable = sql.Substring(7, 1);
@@ -77,7 +77,7 @@ public class SqlQueryBuilder
     /// <summary>
     /// Returns a DbParameter instantiated for PostgreSQL
     /// </summary>
-    public DbParameter CreateParameter(string parameterName, object? parameterValue = null)
+    public static DbParameter CreateParameter(string parameterName, object? parameterValue = null)
     {
         return new NpgsqlParameter(parameterName, parameterValue);
     }
@@ -85,7 +85,7 @@ public class SqlQueryBuilder
     /// <summary>
     /// Returns a DbCommand instantiated for PostgreSQL
     /// </summary>
-    public DbCommand CreateCommand()
+    public static DbCommand CreateCommand()
     {
         return new NpgsqlCommand();
     }
@@ -94,7 +94,7 @@ public class SqlQueryBuilder
     /// Returns NpgsqlDbType for PostgreSQL parameters
     /// </summary>
     /// <returns></returns>
-    public DbType Dbtype()
+    public static DbType Dbtype()
     {
         return (DbType)NpgsqlTypes.NpgsqlDbType.Jsonb;
     }
@@ -102,7 +102,7 @@ public class SqlQueryBuilder
     /// <summary>
     /// Sets NpgsqlDbType for PostgreSQL parameters
     /// </summary>
-    public void SetDbTypeParam(DbParameter parameter, DbType dbType)
+    public static void SetDbTypeParam(DbParameter parameter, DbType dbType)
     {
         ((NpgsqlParameter)parameter).NpgsqlDbType = (NpgsqlTypes.NpgsqlDbType)dbType;
     }
@@ -112,7 +112,7 @@ public class SqlQueryBuilder
     /// </summary>
     /// <param name="tableInfo"></param>
     /// <returns></returns>
-    public virtual string SelectFromOutputTable(TableInfo tableInfo)
+    public static string SelectFromOutputTable(TableInfo tableInfo)
     {
         List<string> columnsNames = tableInfo.OutputPropertyColumnNamesDict.Values.ToList();
         var q = $"SELECT {GetCommaSeparatedColumns(columnsNames)} " +
@@ -129,7 +129,7 @@ public class SqlQueryBuilder
     /// <param name="tableInfo"></param>
     /// <param name="isOutputTable"></param>
     /// <returns></returns>
-    public virtual string CreateTableCopy(string existingTableName, string newTableName, TableInfo tableInfo, bool isOutputTable = false)
+    public static string CreateTableCopy(string existingTableName, string newTableName, TableInfo tableInfo, bool isOutputTable = false)
     {
         // TODO: (optionaly) if CalculateStats = True then Columns could be omitted from Create and from MergeOutput
         List<string> columnsNames = (isOutputTable ? tableInfo.OutputPropertyColumnNamesDict
@@ -263,7 +263,7 @@ public class SqlQueryBuilder
     /// <param name="tableName"></param>
     /// <param name="isTempTable"></param>
     /// <returns></returns>
-    public virtual string DropTable(string tableName, bool isTempTable)
+    public static string DropTable(string tableName, bool isTempTable)
     {
         string q;
         if (isTempTable)
@@ -463,7 +463,7 @@ public class SqlQueryBuilder
                 var querable = context.Set<T>().IgnoreQueryFilters().IgnoreAutoIncludes();
                 var expression = (Expression<Func<T, T>>)tableInfo.BulkConfig.SynchronizeSoftDelete;
                 var (sqlOriginal, sqlParameters) = BatchUtil.GetSqlUpdate(querable, context, typeof(T), expression);
-                var (tableAlias, _) = SqlAdaptersMapping.GetAdapterDialect(context).GetBatchSqlReformatTableAliasAndTopStatement(sqlOriginal);
+                var (tableAlias, _) = SqlQueryBuilder.GetBatchSqlReformatTableAliasAndTopStatement(sqlOriginal);
 
                 var sql = sqlOriginal.Replace($"[{tableAlias}]", "T");
                 int indexFrom = sql.IndexOf(".") - 1;
@@ -536,7 +536,7 @@ public class SqlQueryBuilder
     /// Generates SQL query to truncate a table
     /// </summary>
     /// <param name="tableName"></param>
-    public string TruncateTable(string tableName)
+    public static string TruncateTable(string tableName)
     {
         var q = $"TRUNCATE {tableName} RESTART IDENTITY;";
         q = q.Replace("[", @"""").Replace("]", @"""");
@@ -1057,4 +1057,53 @@ public class SqlQueryBuilder
         string ANDSeparatedColumns = commaSeparatedColumns.Replace(",", " AND");
         return ANDSeparatedColumns;
     }
+
+    /// <summary>
+    /// Gets batch SQL reformat table alias and top statement for PostgreSQL
+    /// </summary>
+    /// <param name="sqlQuery"></param>
+    /// <returns></returns>
+    public static (string, string) GetBatchSqlReformatTableAliasAndTopStatement(string sqlQuery)
+    {
+        // PostgreSQL is the only supported database type
+        var escapeSymbolEnd = ".";
+        var escapeSymbolStart = " "; // PostgreSQL format
+        
+        var tableAliasEnd = sqlQuery[SelectStatementLength..sqlQuery.IndexOf(escapeSymbolEnd, StringComparison.Ordinal)]; // " table_alias"
+        var tableAliasStartIndex = tableAliasEnd.IndexOf(escapeSymbolStart, StringComparison.Ordinal);
+        var tableAlias = tableAliasEnd[(tableAliasStartIndex + escapeSymbolStart.Length)..]; // "table_alias"
+        var topStatement = tableAliasEnd[..tableAliasStartIndex].TrimStart(); // if TOP not present in query this will be a Substring(0,0) == ""
+        return (tableAlias, topStatement);
+    }
+
+    private static readonly int SelectStatementLength = "SELECT".Length;
+
+    /// <summary>
+    /// Gets batch SQL extract table alias from query for PostgreSQL
+    /// </summary>
+    /// <param name="fullQuery"></param>
+    /// <param name="tableAlias"></param>
+    /// <param name="tableAliasSuffixAs"></param>
+    /// <returns></returns>
+    public static ExtractedTableAlias GetBatchSqlExtractTableAliasFromQuery(string fullQuery, string tableAlias, string tableAliasSuffixAs)
+    {
+        return new ExtractedTableAlias
+        {
+            TableAlias = tableAlias,
+            TableAliasSuffixAs = tableAliasSuffixAs,
+            Sql = fullQuery
+        };
+    }
+}
+
+/// <summary>
+/// Contains the table alias and SQL query
+/// </summary>
+public class ExtractedTableAlias
+{
+#pragma warning disable CS1591 // No XML comments required
+    public string TableAlias { get; set; } = null!;
+    public string TableAliasSuffixAs { get; set; } = null!;
+    public string Sql { get; set; } = null!;
+#pragma warning restore CS1591 // No XML comments required
 }
