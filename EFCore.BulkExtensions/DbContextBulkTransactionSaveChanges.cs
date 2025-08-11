@@ -15,10 +15,6 @@ namespace EFCore.BulkExtensions;
 internal static class DbContextBulkTransactionSaveChanges
 {
     #region SaveChanges
-    public static void SaveChanges(DbContext context, BulkConfig? bulkConfig, Action<decimal>? progress)
-    {
-        SaveChangesAsync(context, bulkConfig, progress, isAsync: false, CancellationToken.None).GetAwaiter().GetResult();
-    }
 
     public static async Task SaveChangesAsync(DbContext context, BulkConfig? bulkConfig, Action<decimal>? progress, CancellationToken cancellationToken)
     {
@@ -124,14 +120,7 @@ internal static class DbContextBulkTransactionSaveChanges
                     }
 
                     string methodName = EntityStateBulkMethodDict[entryGroup.State].Key;
-                    if (isAsync)
-                    {
-                        await InvokeBulkMethod(context, entryGroup.Entities, entityType, methodName, bulkConfig, progress, isAsync: true, cancellationToken).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        InvokeBulkMethod(context, entryGroup.Entities, entityType, methodName, bulkConfig, progress, isAsync: false, cancellationToken).GetAwaiter().GetResult();
-                    }
+                    await InvokeBulkMethod(context, entryGroup.Entities, entityType, methodName, bulkConfig, progress, cancellationToken).ConfigureAwait(false);
                 }
             }
             else if (option == 2)
@@ -141,11 +130,11 @@ internal static class DbContextBulkTransactionSaveChanges
                 {
                     if (isAsync)
                     {
-                        await InvokeBulkMethod(context, bulkMethod.Entries, bulkMethod.Type, bulkMethod.MethodName, bulkConfig, progress, isAsync: true, cancellationToken).ConfigureAwait(false);
+                        await InvokeBulkMethod(context, bulkMethod.Entries, bulkMethod.Type, bulkMethod.MethodName, bulkConfig, progress, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
-                        InvokeBulkMethod(context, bulkMethod.Entries, bulkMethod.Type, bulkMethod.MethodName, bulkConfig, progress, isAsync: false, cancellationToken).GetAwaiter().GetResult();
+                        await InvokeBulkMethod(context, bulkMethod.Entries, bulkMethod.Type, bulkMethod.MethodName, bulkConfig, progress, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -159,22 +148,21 @@ internal static class DbContextBulkTransactionSaveChanges
         {
             if (!hasExistingTransaction)
             {
-
                 if (isAsync)
                 {
                     await context.Database.CloseConnectionAsync().ConfigureAwait(false);
                 }
                 else
                 {
-                    context.Database.CloseConnection();
+                    await context.Database.CloseConnectionAsync().ConfigureAwait(false);
                 }
             }
         }
     }
 
-    private static async Task InvokeBulkMethod(DbContext context, List<object> entities, Type entityType, string methodName, BulkConfig bulkConfig, Action<decimal>? progress, bool isAsync, CancellationToken cancellationToken)
+    private static async Task InvokeBulkMethod(DbContext context, List<object> entities, Type entityType, string methodName, BulkConfig bulkConfig, Action<decimal>? progress, CancellationToken cancellationToken)
     {
-        methodName += isAsync ? "Async" : "";
+        methodName += "Async"; // Always use async methods
         MethodInfo? bulkMethod = typeof(DbContextBulkExtensions)
             .GetMethods()
             .Where(a => a.Name == methodName)
@@ -183,32 +171,22 @@ internal static class DbContextBulkTransactionSaveChanges
         bulkMethod = bulkMethod?.MakeGenericMethod(typeof(object));
 
         var arguments = new List<object?> { context, entities, bulkConfig, progress, entityType, cancellationToken };
-        if (isAsync)
+        var methodArguments = arguments.ToArray();
+        if (bulkMethod is not null)
         {
-            var methodArguments = arguments.ToArray();
-            if (bulkMethod is not null)
+            var task = (Task?)bulkMethod.Invoke(null, methodArguments);
+            if (task != null)
             {
-                var task = (Task?)bulkMethod.Invoke(null, methodArguments);
-                if (task != null)
-                {
-                    await task.ConfigureAwait(false);
-                }
+                await task.ConfigureAwait(false);
             }
-
-        }
-        else
-        {
-            arguments.RemoveAt(arguments.Count - 1); // removes cancellationToken
-            var methodArguments = arguments.ToArray();
-            bulkMethod?.Invoke(null, methodArguments);
         }
     }
 
     private static Dictionary<EntityState, KeyValuePair<string, int>> EntityStateBulkMethodDict => new()
     {
-        { EntityState.Deleted, new KeyValuePair<string, int>(nameof(DbContextBulkExtensions.BulkDelete), 1) },
-        { EntityState.Modified, new KeyValuePair<string, int>(nameof(DbContextBulkExtensions.BulkUpdate), 2) },
-        { EntityState.Added, new KeyValuePair<string, int>(nameof(DbContextBulkExtensions.BulkInsert), 3)},
+        { EntityState.Deleted, new KeyValuePair<string, int>(nameof(DbContextBulkExtensions.BulkDeleteAsync), 1) },
+        { EntityState.Modified, new KeyValuePair<string, int>(nameof(DbContextBulkExtensions.BulkUpdateAsync), 2) },
+        { EntityState.Added, new KeyValuePair<string, int>(nameof(DbContextBulkExtensions.BulkInsertAsync), 3)},
     };
 #endregion
 

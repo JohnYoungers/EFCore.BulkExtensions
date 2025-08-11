@@ -14,52 +14,6 @@ internal static class DbContextBulkTransaction
 {
     private static readonly ActivitySource ActivitySource = new("EFCore.BulkExtensions");
 
-    public static void Execute<T>(DbContext context, Type? type, IEnumerable<T> entities, OperationType operationType, BulkConfig? bulkConfig, Action<decimal>? progress) where T : class
-    {
-        UpdateSqlAdaptersProps(context);
-
-        type ??= typeof(T);
-
-        var activity = ActivitySource.StartActivity("EFCore.BulkExtensions.BulkExecute");
-        if (activity != null)
-        {
-            activity.AddTag("operationType", operationType.ToString("G"));
-            activity.AddTag("entitiesCount", entities.Count().ToString(CultureInfo.InvariantCulture));
-        }
-
-        using (activity)
-        {
-            if (!IsValidTransaction(entities, operationType, bulkConfig)) return;
-
-            if (operationType == OperationType.SaveChanges)
-            {
-                DbContextBulkTransactionSaveChanges.SaveChanges(context, bulkConfig, progress);
-                return;
-            }
-
-            var tableInfo = TableInfo.CreateInstance(context, type, entities, operationType, bulkConfig);
-
-            switch (operationType)
-            {
-                case OperationType.Insert when tableInfo.BulkConfig.CustomSourceTableName == null:
-                    SqlBulkOperation.Insert(context, type, entities, tableInfo, progress);
-                    break;
-
-                case OperationType.Read:
-                    SqlBulkOperation.Read(context, type, entities, tableInfo, progress);
-                    break;
-
-                case OperationType.Truncate:
-                    SqlBulkOperation.Truncate(context, tableInfo);
-                    break;
-
-                default:
-                    SqlBulkOperation.Merge(context, type, entities, tableInfo, operationType, progress);
-                    break;
-            }
-        }
-    }
-
     public static async Task ExecuteAsync<T>(DbContext context, Type? type, IEnumerable<T> entities, OperationType operationType, BulkConfig? bulkConfig, Action<decimal>? progress, CancellationToken cancellationToken = default) where T : class
     {
         UpdateSqlAdaptersProps(context);
