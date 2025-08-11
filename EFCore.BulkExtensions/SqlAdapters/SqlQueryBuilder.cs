@@ -463,7 +463,7 @@ public class SqlQueryBuilder
                 var querable = context.Set<T>().IgnoreQueryFilters().IgnoreAutoIncludes();
                 var expression = (Expression<Func<T, T>>)tableInfo.BulkConfig.SynchronizeSoftDelete;
                 var (sqlOriginal, sqlParameters) = BatchUtil.GetSqlUpdate(querable, context, typeof(T), expression);
-                var (tableAlias, _) = SqlAdaptersMapping.GetAdapterDialect(context).GetBatchSqlReformatTableAliasAndTopStatement(sqlOriginal);
+                var (tableAlias, _) = new SqlQueryBuilder().GetBatchSqlReformatTableAliasAndTopStatement(sqlOriginal);
 
                 var sql = sqlOriginal.Replace($"[{tableAlias}]", "T");
                 int indexFrom = sql.IndexOf(".") - 1;
@@ -1057,4 +1057,53 @@ public class SqlQueryBuilder
         string ANDSeparatedColumns = commaSeparatedColumns.Replace(",", " AND");
         return ANDSeparatedColumns;
     }
+
+    /// <summary>
+    /// Gets batch SQL reformat table alias and top statement for PostgreSQL
+    /// </summary>
+    /// <param name="sqlQuery"></param>
+    /// <returns></returns>
+    public (string, string) GetBatchSqlReformatTableAliasAndTopStatement(string sqlQuery)
+    {
+        // PostgreSQL is the only supported database type
+        var escapeSymbolEnd = ".";
+        var escapeSymbolStart = " "; // PostgreSQL format
+        
+        var tableAliasEnd = sqlQuery[SelectStatementLength..sqlQuery.IndexOf(escapeSymbolEnd, StringComparison.Ordinal)]; // " table_alias"
+        var tableAliasStartIndex = tableAliasEnd.IndexOf(escapeSymbolStart, StringComparison.Ordinal);
+        var tableAlias = tableAliasEnd[(tableAliasStartIndex + escapeSymbolStart.Length)..]; // "table_alias"
+        var topStatement = tableAliasEnd[..tableAliasStartIndex].TrimStart(); // if TOP not present in query this will be a Substring(0,0) == ""
+        return (tableAlias, topStatement);
+    }
+
+    private static readonly int SelectStatementLength = "SELECT".Length;
+
+    /// <summary>
+    /// Gets batch SQL extract table alias from query for PostgreSQL
+    /// </summary>
+    /// <param name="fullQuery"></param>
+    /// <param name="tableAlias"></param>
+    /// <param name="tableAliasSuffixAs"></param>
+    /// <returns></returns>
+    public ExtractedTableAlias GetBatchSqlExtractTableAliasFromQuery(string fullQuery, string tableAlias, string tableAliasSuffixAs)
+    {
+        return new ExtractedTableAlias
+        {
+            TableAlias = tableAlias,
+            TableAliasSuffixAs = tableAliasSuffixAs,
+            Sql = fullQuery
+        };
+    }
+}
+
+/// <summary>
+/// Contains the table alias and SQL query
+/// </summary>
+public class ExtractedTableAlias
+{
+#pragma warning disable CS1591 // No XML comments required
+    public string TableAlias { get; set; } = null!;
+    public string TableAliasSuffixAs { get; set; } = null!;
+    public string Sql { get; set; } = null!;
+#pragma warning restore CS1591 // No XML comments required
 }

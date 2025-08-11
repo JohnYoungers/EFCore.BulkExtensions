@@ -16,7 +16,7 @@ internal static class DbContextBulkTransaction
 
     public static async Task ExecuteAsync<T>(DbContext context, Type? type, IEnumerable<T> entities, OperationType operationType, BulkConfig? bulkConfig, Action<decimal>? progress, CancellationToken cancellationToken = default) where T : class
     {
-        UpdateSqlAdaptersProps(context);
+        ValidatePostgreSqlProvider(context);
 
         type ??= typeof(T);
 
@@ -61,9 +61,14 @@ internal static class DbContextBulkTransaction
     }
 
     #region SqlAdapters Settings
-    private static void UpdateSqlAdaptersProps(DbContext context)
+    private static void ValidatePostgreSqlProvider(DbContext context)
     {
-        SqlAdaptersMapping.UpdateProviderName(context.Database.ProviderName);
+        var providerName = context.Database.ProviderName;
+        var ignoreCase = StringComparison.InvariantCultureIgnoreCase;
+        if (!(providerName?.EndsWith("postgresql", ignoreCase) ?? false))
+        {
+            throw new NotSupportedException($"Database provider '{providerName}' is not supported. Only PostgreSQL is supported.");
+        }
     }
     #endregion
 

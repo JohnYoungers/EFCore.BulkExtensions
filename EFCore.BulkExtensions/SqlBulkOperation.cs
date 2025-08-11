@@ -52,49 +52,49 @@ internal static class SqlBulkOperation
 
     public static void Insert<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress)
     {
-        var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
+        var adapter = new SqlAdapter();
         adapter.Insert(context, type, entities, tableInfo, progress);
     }
 
     public static async Task InsertAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress, CancellationToken cancellationToken)
     {
-        var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
+        var adapter = new SqlAdapter();
         await adapter.InsertAsync(context, type, entities, tableInfo, progress, cancellationToken).ConfigureAwait(false);
     }
 
     public static void Merge<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, OperationType operationType, Action<decimal>? progress) where T : class
     {
-        var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
+        var adapter = new SqlAdapter();
         adapter.Merge(context, type, entities, tableInfo, operationType, progress);
     }
 
     public static async Task MergeAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, OperationType operationType, Action<decimal>? progress, CancellationToken cancellationToken = default) where T : class
     {
-        var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
+        var adapter = new SqlAdapter();
         await adapter.MergeAsync(context, type, entities, tableInfo, operationType, progress, cancellationToken).ConfigureAwait(false);
     }
 
     public static void Read<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress) where T : class
     {
-        var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
+        var adapter = new SqlAdapter();
         adapter.Read(context, type, entities, tableInfo, progress);
     }
 
     public static async Task ReadAsync<T>(DbContext context, Type type, IEnumerable<T> entities, TableInfo tableInfo, Action<decimal>? progress, CancellationToken cancellationToken) where T : class
     {
-        var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
+        var adapter = new SqlAdapter();
         await adapter.ReadAsync(context, type, entities, tableInfo, progress, cancellationToken).ConfigureAwait(false);
     }
 
     public static void Truncate(DbContext context, TableInfo tableInfo)
     {
-        var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
+        var adapter = new SqlAdapter();
         adapter.Truncate(context, tableInfo);
     }
 
     public static async Task TruncateAsync(DbContext context, TableInfo tableInfo, CancellationToken cancellationToken)
     {
-        var adapter = SqlAdaptersMapping.CreateBulkOperationsAdapter(context);
+        var adapter = new SqlAdapter();
         await adapter.TruncateAsync(context, tableInfo, cancellationToken).ConfigureAwait(false);
     }
 }
