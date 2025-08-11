@@ -45,12 +45,12 @@ public static class BatchUtil
         // PostgreSQL-only implementation
         string resultQuery = $"{leadingComments}DELETE {topStatement}{tableAlias}{sql}";
 
-        resultQuery = new SqlQueryBuilder().RestructureForBatch(resultQuery, isDelete: true);
+        resultQuery = SqlQueryBuilder.RestructureForBatch(resultQuery, isDelete: true);
 
         var npgsqlParameters = new List<DbParameter>();
         foreach (var param in innerParameters)
         {
-            npgsqlParameters.Add(new SqlQueryBuilder().CreateParameter(param.ParameterName, param.Value));
+            npgsqlParameters.Add(SqlQueryBuilder.CreateParameter(param.ParameterName, param.Value));
         }
         innerParameters = npgsqlParameters;
 
@@ -145,19 +145,19 @@ public static class BatchUtil
         }
 
         // PostgreSQL-only implementation
-        resultQuery = new SqlQueryBuilder().RestructureForBatch(resultQuery);
+        resultQuery = SqlQueryBuilder.RestructureForBatch(resultQuery);
 
         var npgsqlParameters = new List<DbParameter>();
         foreach (var param in sqlParameters)
         {
-            dynamic npgsqlParam = new SqlQueryBuilder().CreateParameter(param.ParameterName, param.Value);
+            dynamic npgsqlParam = SqlQueryBuilder.CreateParameter(param.ParameterName, param.Value);
 
             string paramName = npgsqlParam.ParameterName.Replace("@", "");
             var propertyType = type.GetProperties().SingleOrDefault(a => a.Name == paramName)?.PropertyType;
             if (propertyType == typeof(System.Text.Json.JsonElement) || propertyType == typeof(System.Text.Json.JsonElement?)) // for JsonDocument works without fix
             {
-                var dbtypeJsonb = new SqlQueryBuilder().Dbtype();
-                new SqlQueryBuilder().SetDbTypeParam(npgsqlParam, dbtypeJsonb);
+                var dbtypeJsonb = SqlQueryBuilder.Dbtype();
+                SqlQueryBuilder.SetDbTypeParam(npgsqlParam, dbtypeJsonb);
             }
 
             npgsqlParameters.Add(npgsqlParam);
@@ -224,7 +224,7 @@ public static class BatchUtil
         string tableAliasSufixAs = string.Empty;
         string topStatement;
 
-        (tableAlias, topStatement) = new SqlQueryBuilder().GetBatchSqlReformatTableAliasAndTopStatement(sqlQuery);
+        (tableAlias, topStatement) = SqlQueryBuilder.GetBatchSqlReformatTableAliasAndTopStatement(sqlQuery);
 
         int indexFrom = sqlQuery.IndexOf(Environment.NewLine, StringComparison.Ordinal);
         string sql = sqlQuery[indexFrom..];
@@ -233,7 +233,7 @@ public static class BatchUtil
 
         if (isUpdate)
         {
-            var extracted = new SqlQueryBuilder().GetBatchSqlExtractTableAliasFromQuery(
+            var extracted = SqlQueryBuilder.GetBatchSqlExtractTableAliasFromQuery(
                 sql, tableAlias, tableAliasSufixAs
             );
             tableAlias = extracted.TableAlias;
@@ -313,7 +313,7 @@ public static class BatchUtil
                     {
                         propertyUpdateValue ??= DBNull.Value;
 
-                        param = new SqlQueryBuilder().CreateParameter($"@{columnName}", propertyUpdateValue);
+                        param = SqlQueryBuilder.CreateParameter($"@{columnName}", propertyUpdateValue);
 
                         if (!isDifferentFromDefault && propertyUpdateValue == DBNull.Value
                             && property?.PropertyType == typeof(byte[])) // needed only when having complex type property to be updated to default 'null'
@@ -588,7 +588,7 @@ public static class BatchUtil
         var sqlParameter = TryCreateRelationalMappingParameter(context, tableInfo, columnName, paramName, value, valueOrig);
         if (sqlParameter == null)
         {
-            sqlParameter = new SqlQueryBuilder().CreateParameter(paramName, value ?? DBNull.Value);
+            sqlParameter = SqlQueryBuilder.CreateParameter(paramName, value ?? DBNull.Value);
             var columnType = columnName is null ? null : tableInfo?.ColumnNamesTypesDict[columnName];
             if (value == null
                 && (columnType?.Contains(DbType.Binary.ToString(), StringComparison.OrdinalIgnoreCase) ?? false)) //"varbinary(max)".Contains("binary")
@@ -623,7 +623,7 @@ public static class BatchUtil
             return null;
 
         var relationalTypeMapping = propertyInfo?.GetRelationalTypeMapping();
-        using var dbCommand = new SqlQueryBuilder().CreateCommand();
+        using var dbCommand = SqlQueryBuilder.CreateCommand();
         try
         {
             return relationalTypeMapping?.CreateParameter(dbCommand, parameterName, value, propertyInfo?.IsNullable);

@@ -101,7 +101,7 @@ public class SqlQueryBuilderPostgreSqlTests
         string expected =
             @"UPDATE ""Item"" AS i SET ""Description"" = @Description, ""Price"" = @Price WHERE i.""ItemId"" <= 1";
 
-        var batchUpdate = new SqlQueryBuilder().RestructureForBatch(sql);
+        var batchUpdate = SqlQueryBuilder.RestructureForBatch(sql);
 
         Assert.Equal(expected, batchUpdate);
     }
@@ -115,7 +115,7 @@ public class SqlQueryBuilderPostgreSqlTests
         string expected =
             @"UPDATE ""Item"" AS i SET ""Description"" = @Description, ""Price"" = @Price FROM ""User"" AS u WHERE i.""ItemId"" <= 1 AND i.""UserId"" = u.""Id"" ";
 
-        var batchUpdate = new SqlQueryBuilder().RestructureForBatch(sql);
+        var batchUpdate = SqlQueryBuilder.RestructureForBatch(sql);
 
         Assert.Equal(expected, batchUpdate);
     }

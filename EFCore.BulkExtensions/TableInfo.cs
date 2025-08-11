@@ -170,8 +170,7 @@ public class TableInfo
         string? defaultSchema = null;
         if (isNpgsql)
         {
-            var adapter = new SqlAdapter();
-            defaultSchema = adapter.ReconfigureTableInfo(context, this);
+            defaultSchema = SqlAdapter.ReconfigureTableInfo(context, this);
         }
         else
         {
@@ -817,7 +816,7 @@ public class TableInfo
         {
             sqlQueryCounts.Add(sqlQueryCountBase + $"'{actionCode}'");
 
-            var resultParameter = new SqlQueryBuilder().CreateParameter("@result" + actionCode, null);
+            var resultParameter = SqlQueryBuilder.CreateParameter("@result" + actionCode, null);
             if (resultParameter is null)
             {
                 throw new ArgumentException("Unable to create an instance of IDbDataParameter");
